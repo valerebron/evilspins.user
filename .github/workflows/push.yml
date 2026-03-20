@@ -1,0 +1,43 @@
+name: Deploy App
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container:
+      volumes:
+        - /var/docker-web:/var/docker-web
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build app
+        run: |
+          bash ./.github/workflows/setup-env.sh
+          set -a && source .env && set +a
+          if [ -n "$APP_NAME" ]; then
+            set -a && source .env && set +a
+            if [ -d "/var/docker-web/apps/${APP_NAME}" ]; then
+              bash /var/docker-web/src/cli.sh down "${APP_NAME}"
+            fi
+            rm -rf "$APP_DIR"
+            mkdir "$APP_DIR"
+            cp -a $(find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name 'node_modules') "$APP_DIR/"
+            export COMPOSE_BAKE=false
+            docker rmi "${APP_NAME}" 2>/dev/null || true
+            bash /var/docker-web/src/cli.sh build "${APP_NAME}"
+          fi
+
+  deploy:
+    runs-on: ubuntu-22.04
+    needs: build
+    container:
+      volumes:
+        - /var/docker-web:/var/docker-web
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: |
+          bash ./.github/workflows/setup-env.sh
+          set -a && source .env && set +a
+          if [ -n "$APP_NAME" ]; then
+            bash /var/docker-web/src/cli.sh up "${APP_NAME}"
+          fi

@@ -1,0 +1,22 @@
+services:
+  evilspins-user:
+    image: evilspins-user
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: evilspins
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "${PORT}:${PORT_EXPOSED}"
+    environment:
+      VIRTUAL_HOST: "${DOMAIN}"
+      LETSENCRYPT_HOST: "${DOMAIN}"
+      PUID: "${PUID}"
+      PGID: "${PGID}"
+      DATA_API_URL: "${DATA_API_URL}"
+
+networks:
+  default:
+    name: dockerweb
+    external: true
