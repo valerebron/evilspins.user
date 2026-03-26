@@ -37,7 +37,6 @@ jobs:
       - name: Deploy
         run: |
           bash ./.github/workflows/setup-env.sh
-          bash ./.github/workflows/setup-branch.sh
           set -a && source .env && set +a
           if [ -n "$APP_NAME" ]; then
             bash /var/docker-web/src/cli.sh up "${APP_NAME}"
