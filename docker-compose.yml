@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: evilspins
+    container_name: evilspins-user
     restart: unless-stopped
     working_dir: /app
     ports:
