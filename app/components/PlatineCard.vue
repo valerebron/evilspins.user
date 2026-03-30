@@ -24,6 +24,8 @@ $open-speed: 0.4s;
 
 .platine-card {
   @apply size-card;
+  max-height: 100vmin;
+  max-width: 100vmin;
   position: relative;
   transition: all $open-speed;
 
@@ -31,8 +33,7 @@ $open-speed: 0.4s;
   .platine {
     height: 100%;
     width: 100%;
-    transition: width $open-speed, height $open-speed, min-width $open-speed,
-      min-height $open-speed, transform 0.1s;
+    transition: max-width $open-speed, max-height $open-speed, transform 0.1s;
   }
 
   :deep(.card) {
@@ -55,8 +56,6 @@ $open-speed: 0.4s;
     $open-size: 40rem;
     width: $open-size;
     height: $open-size;
-    min-height: $open-size;
-    min-width: $open-size;
 
     .card {
       pointer-events: none;
