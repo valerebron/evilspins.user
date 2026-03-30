@@ -1,4 +1,4 @@
-name: Deploy App
+name: Deploy
 on: [push]
 
 jobs:
@@ -9,7 +9,7 @@ jobs:
         - /var/docker-web:/var/docker-web
     steps:
       - uses: actions/checkout@v4
-      - name: Build app
+      - name: Build
         run: |
           bash ./.github/workflows/setup-env.sh
           set -a && source .env && set +a

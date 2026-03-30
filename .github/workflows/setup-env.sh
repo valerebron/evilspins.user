@@ -24,11 +24,12 @@ if [ "$BRANCH_NAME" != "main" ] && [ "$BRANCH_NAME" != "master" ]; then
   APP_NAME_BRANCH="${APP_NAME_MAIN}.${BRANCH_NAME}"
   PORT=$(bash /var/docker-web/src/cli.sh ALLOCATE_PORT)
   sed -i "s|${APP_NAME_MAIN}|$APP_NAME_BRANCH|g" docker-compose.yml
+
+  changeEnvVar "DOMAIN" $DOMAIN_BRANCH
+  changeEnvVar "PORT" $PORT
+  changeEnvVar "APP_NAME" $APP_NAME_BRANCH
+  changeEnvVar "APP_DIR" "/var/docker-web/apps/$APP_NAME_BRANCH"
+else
+  changeEnvVar "APP_NAME" $APP_NAME_MAIN
+  changeEnvVar "APP_DIR" "/var/docker-web/apps/$APP_NAME_MAIN"
 fi
-
-APP_DIR="/var/docker-web/apps/$APP_NAME_BRANCH"
-
-changeEnvVar "DOMAIN" $DOMAIN_BRANCH
-changeEnvVar "PORT" $PORT
-changeEnvVar "APP_NAME" $APP_NAME_BRANCH
-changeEnvVar "APP_DIR" $APP_DIR
