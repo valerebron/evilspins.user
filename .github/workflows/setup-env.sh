@@ -15,21 +15,20 @@ changeEnvVar() {
 
 
 # Variables GitHub
-APP_NAME="${GITHUB_REPOSITORY##*/}"
+APP_NAME_MAIN="${GITHUB_REPOSITORY##*/}"
 BRANCH_NAME=$GITHUB_REF_NAME
 
 # Configuration pour les branches non-principales
 if [ "$BRANCH_NAME" != "main" ] && [ "$BRANCH_NAME" != "master" ]; then
-  DOMAIN="$BRANCH_NAME.$DOMAIN"
-  APP_NAME="${BRANCH_NAME}.${APP_NAME}"
-  APP_NAME_SAFE="${BRANCH_NAME}-${APP_NAME}"
+  DOMAIN_BRANCH="$BRANCH_NAME.$DOMAIN"
+  APP_NAME_BRANCH="${APP_NAME_MAIN}.${BRANCH_NAME}"
   PORT=$(bash /var/docker-web/src/cli.sh ALLOCATE_PORT)
-  sed -i "s|${GITHUB_REPOSITORY##*/}|$APP_NAME|g" docker-compose.yml
+  sed -i "s|${APP_NAME_MAIN}|$APP_NAME_BRANCH|g" docker-compose.yml
 fi
 
-APP_DIR="/var/docker-web/apps/$APP_NAME"
+APP_DIR="/var/docker-web/apps/$APP_NAME_BRANCH"
 
-changeEnvVar "DOMAIN" $DOMAIN
+changeEnvVar "DOMAIN" $DOMAIN_BRANCH
 changeEnvVar "PORT" $PORT
-changeEnvVar "APP_NAME" $APP_NAME
+changeEnvVar "APP_NAME" $APP_NAME_BRANCH
 changeEnvVar "APP_DIR" $APP_DIR
