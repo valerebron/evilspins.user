@@ -1,21 +1,47 @@
 <template>
-  <section class="platine-card text-center" :class="{ 'platine-open': isPlatineOpen }">
-    <Card :card="props.card!" :is-face-up="props.isFaceUp" @click="clickOnCard" :role="isPlatineOpen ? 'img' : 'button'"
-      showPlayButtonFaceUp />
-    <Platine v-if="isPlatineOpen && card" :card="card" autoplay/>
-    <Button v-if="isPlatineOpen" @click="isPlatineOpen = false" key-alias="Escape">close</Button>
+  <section class="platine-card text-center" :class="{ 'open': isOpen }">
+    <Card :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
+      :is-loading="isLoading" showPlayButtonFaceUp />
+    <Platine v-if="isPlatineInit" ref="platineRef" :card="card" @loaded="onTrackLoaded" v-show="isOpen" />
+    <Button v-if="isOpen" @click="closePlatine" key-alias="Escape" class="absolute top-0 right-0">Close</Button>
   </section>
 </template>
 
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
 
-const props = defineProps<{ card: Card, isFaceUp: boolean }>()
+const props = defineProps<{ card: Card }>()
 
-const isPlatineOpen = ref(false)
+const isPlatineInit = ref(false)
+const isOpen = ref(false)
+const isFaceUp = ref(false)
+const isLoading = ref(false)
+
+const platineRef = useTemplateRef('platineRef')
 
 const clickOnCard = () => {
-  isPlatineOpen.value = !isPlatineOpen.value
+  if (!isPlatineInit.value) {
+    isPlatineInit.value = true
+    isLoading.value = true
+  } else {
+    isOpen.value = true
+    platineRef.value?.play()
+  }
+}
+
+const onTrackLoaded = () => {
+  isLoading.value = false
+  isFaceUp.value = true
+  setTimeout(() => {
+    isOpen.value = true
+    platineRef.value?.play()
+    document.title = `${props.card.artist} - ${props.card.title}`
+  }, 700)
+}
+
+const closePlatine = () => {
+  isOpen.value = false
+  platineRef.value?.pause()
 }
 </script>
 
@@ -52,7 +78,7 @@ $open-speed: 0.4s;
     }
   }
 
-  &.platine-open {
+  &.open {
     $open-size: 40rem;
     width: $open-size;
     height: $open-size;
@@ -66,7 +92,9 @@ $open-speed: 0.4s;
     }
 
     &:deep(.card) {
-      .face-up, .face-down {
+
+      .face-up,
+      .face-down {
         border-radius: 100%;
         @apply shadow-xl;
 

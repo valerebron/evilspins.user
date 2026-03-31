@@ -1,7 +1,6 @@
 <template>
   <section class="deck">
-    <PlatineCard v-for="(card, index) in cards" :key="index" :card="card" :isFaceUp="isFaceUp[index]"
-      @click="isFaceUp[index] = true" />
+    <PlatineCard v-for="(card, index) in cards" :key="index" :card="card" />
   </section>
 </template>
 
@@ -10,7 +9,6 @@ import type { Card } from '~~/types/types'
 
 const nbCards = 1
 const cards = ref<Card[]>([])
-const isFaceUp = ref<boolean[]>([])
 
 // Chargement des cartes
 const loadCards = async () => {
@@ -20,30 +18,13 @@ const loadCards = async () => {
     )
     const results = await Promise.all(promises)
     cards.value = results
-    isFaceUp.value = new Array(nbCards).fill(false)
   } catch (error) {
     console.error('Error loading cards:', error)
   }
 }
 
-// Animation de retournement des cartes
-const flipCards = () => {
-  isFaceUp.value.forEach((_, index) => {
-    setTimeout(() => {
-      isFaceUp.value[index] = false
-    }, 400 * (index + 1))
-  })
-}
-
 onMounted(async () => {
   await loadCards()
-  setTimeout(flipCards, 600)
-})
-
-useHead({
-  title: computed(() =>
-    cards.value[0] ? `${cards.value[0].artist} - ${cards.value[0].title}` : 'Loading...'
-  )
 })
 </script>
 

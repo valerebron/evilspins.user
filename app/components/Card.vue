@@ -14,7 +14,7 @@
 
         <!-- Cover -->
         <figure class="cover">
-          <PlayButton />
+          <PlayButton :is-loading="isLoading" />
           <img :src="props.card.url_image" alt="cover-image de l'album" :loading="props.imageLoadingType"
             @load="$emit('image-loaded', $event)" class="cover-image w-full h-full object-cover object-center" />
         </figure>
@@ -34,9 +34,8 @@
       <!-- Face-Down -->
       <footer
         class="face-down z-10 card w-56 h-80 p-3 bg-opacity-10 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden select-none">
-        <figure class="cover"
-          >
-          <PlayButton />
+        <figure class="cover">
+          <PlayButton :is-loading="isLoading" />
           <img src="/face-down.svg" class="cover-image" :style="{ backgroundColor: cardColor }" />
         </figure>
       </footer>
@@ -52,6 +51,7 @@ const emit = defineEmits(['click', 'image-loaded'])
 const props = withDefaults(defineProps<{
   card: Card;
   isFaceUp?: boolean;
+  isLoading?: boolean;
   role?: string;
   tabindex?: string | number;
   imageLoadingType?: 'lazy' | 'eager';
@@ -132,6 +132,7 @@ const isTrackLoaded = ref(false)
     img {
       width: 100%;
     }
+
     figure {
       overflow: hidden;
     }

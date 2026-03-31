@@ -1,5 +1,5 @@
 <template>
-  <div class="platine" :class="{ 'loading': isLoadingTrack, 'mounted': isMounted, 'playing': isPlaying }" ref="platine">
+  <div class="platine" :class="{ 'loading': isLoadingTrack, 'mounted': isMounted, 'playing': isPlaying }">
     <div v-if="false" class="debug">
       <button @click="Reverse">
         <b v-if="isReversed">reversed</b>
@@ -21,7 +21,6 @@
       }"></div>
       <button class="power-button" @click="Power" @touchstart="Power" :disabled="isLoadingTrack">
         <img class="macaron" src="/favicon.svg" v-if="!isEndOfTrack">
-        <div class="spinner" v-if="isLoadingTrack" />
         <img class="macaron" @click="Rewind" src="/rewind.svg" v-if="isEndOfTrack" />
       </button>
       <div class="turn-point" v-if="!isLoadingTrack">
@@ -36,8 +35,13 @@ import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
 import Disc from '~/utils/platine/disc'
 import Sampler from '~/utils/platine/sampler'
 
-const props = defineProps<{ card?: Card, autoplay?: boolean }>()
-const autoplay = props.autoplay ?? false
+const props = withDefaults(defineProps<{
+  card?: Card;
+}>(), {
+  card: undefined,
+})
+
+const emit = defineEmits(['loaded'])
 
 // State
 const isLoadingTrack = ref(false)
@@ -52,7 +56,6 @@ const totalTurns = ref(0)// Refs pour les instances
 const disc = ref<Disc | null>(null)
 const sampler = ref<Sampler | null>(null)
 const discRef = ref<HTMLElement>()
-const platine = ref<HTMLElement>()
 const isMounted = ref(false)
 
 const isPlaying = computed(() => Math.abs(Math.round(sampler.value?.currentSpeed || 0)) !== 0)
@@ -117,7 +120,7 @@ const updateTurns = () => {
   }
 }
 
-const loadCard = async (card: Card) => {
+const loadAudio = async (card: Card) => {
   // console.log('[LOAD CARD]', card)
   if (!sampler.value || !card) return
 
@@ -132,6 +135,7 @@ const loadCard = async (card: Card) => {
     }
   } finally {
     isLoadingTrack.value = false
+    emit('loaded')
   }
 }
 
@@ -300,11 +304,7 @@ onMounted(async () => {
   isMounted.value = true
   if (discRef.value) {
     initPlatine(discRef.value)
-    await loadCard(props.card!)
-    if (autoplay) {
-      await nextTick()
-      play()
-    }
+    await loadAudio(props.card!)
   }
 
   window.addEventListener('keydown', handleKeyDown)
@@ -321,10 +321,11 @@ onUnmounted(() => {
 watch(() => props.card, (newCard) => {
   // console.log('[WATCH] Card', newCard)
   if (newCard) {
-    loadCard(newCard)
+    loadAudio(newCard)
   }
 })
 
+defineExpose({ pause, play, togglePlay, Reverse, Rewind, Wind })
 </script>
 
 <style lang="scss">
@@ -385,10 +386,6 @@ watch(() => props.card, (newCard) => {
       @apply size-2/3;
     }
 
-    .spinner {
-      @apply size-1/2;
-    }
-
     &:active {
       .macaron {
         transform: scale(0.8);
@@ -409,16 +406,6 @@ watch(() => props.card, (newCard) => {
     height: 20px;
     background: rgb(26, 26, 26);
     border-radius: 50%;
-  }
-
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    // @apply md:border-8;
   }
 
   @keyframes spin {
