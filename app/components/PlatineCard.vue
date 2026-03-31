@@ -29,19 +29,19 @@ const clickOnCard = () => {
   }
 }
 
-const onTrackLoaded = () => {
-  isLoading.value = false
+const onTrackLoaded = async () => {
   isFaceUp.value = true
-  setTimeout(() => {
-    isOpen.value = true
-    platineRef.value?.play()
-    document.title = `${props.card.artist} - ${props.card.title}`
-  }, 700)
+  await timeout(700)
+  isOpen.value = true
+  document.title = `${props.card.artist} - ${props.card.title}`
+  isLoading.value = false
+  await timeout(500)
+  platineRef.value?.play()
 }
 
 const closePlatine = () => {
   isOpen.value = false
-  platineRef.value?.pause()
+  isPlatineInit.value = false
 }
 </script>
 
