@@ -1,20 +1,38 @@
 <template>
   <div class="rank flex items-center justify-center size-7 absolute top-7 right-7">
-    <div class="suit text-7xl absolute" :class="[isRedCard ? 'text-red-600' : 'text-slate-800', props.card?.suit]">
-      <img :src="`/${props.card?.suit}.svg`" />
+    <div class="suit text-7xl absolute" :class="color">
+      <img :src="image" />
     </div>
-    <div class="rank text-white font-bold absolute -mt-1">
-      {{ props.card?.rank }}
+    <div class="number text-white font-bold absolute -mt-1">
+      {{ number }}
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Card } from '~~/types/types';
 
 const props = defineProps<{ card?: Card }>()
 
 const isRedCard = computed(() => (props.card?.suit === '♥' || props.card?.suit === '♦'))
+
+const color = computed(() => {
+  if (!props.card) return 'text-slate-800'
+  return isRedCard.value ? 'text-red-600' : 'text-slate-800'
+})
+
+const image = computed(() => {
+  if (props.card?.suit) {
+    return `/${props.card.suit}.svg`
+  } else {
+    return `/${props.card.rank}.svg`
+  }
+})
+
+const number = computed(() => {
+  return props.card?.rank
+})
 </script>
 
 <style>

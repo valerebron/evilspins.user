@@ -10,8 +10,9 @@ export interface Card {
   esid: string
   slug: string
   createdAt: Date
-  suit: Suit
-  rank: Rank
+  suit?: Suit
+  rank?: Rank
+  start?: number
 }
 
 export type Suit = '♠' | '♣' | '♦' | '♥'

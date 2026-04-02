@@ -1,30 +1,30 @@
 <template>
   <section class="deck">
-    <PlatineCard v-for="(card, index) in cards" :key="index" :card="card" />
+    <PlatineCard v-for="(card, index) in card" :key="index" :card="card" />
   </section>
 </template>
 
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
 
-const nbCards = 1
-const cards = ref<Card[]>([])
+const nbCard = 1
+const card = ref<Card[]>([])
 
 // Chargement des cartes
-const loadCards = async () => {
+const loadCard = async () => {
   try {
-    const promises = Array(nbCards).fill(0).map(() =>
+    const promises = Array(nbCard).fill(0).map(() =>
       $fetch<Card>('/api/tarot/random')
     )
     const results = await Promise.all(promises)
-    cards.value = results
+    card.value = results
   } catch (error) {
-    console.error('Error loading cards:', error)
+    console.error('Error loading card:', error)
   }
 }
 
 onMounted(async () => {
-  await loadCards()
+  await loadCard()
 })
 </script>
 

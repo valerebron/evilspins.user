@@ -8,7 +8,7 @@ export default eventHandler(async (event) => {
     })
   }
 
-  // const card = await db.select().from(schema.cards).where(eq(schema.cards.esid, esid)).get()
+  // const card = await db.select().from(schema.card).where(eq(schema.card.esid, esid)).get()
 
   if (!card) {
     throw createError({

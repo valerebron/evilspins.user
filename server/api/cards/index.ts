@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
 
   // Log pour débogage
   console.log('Requête avec paramètres:', { search, cardRank, cardSuit, year })
-  console.log('Schéma des cards:', Object.keys(schema.cards))
+  console.log('Schéma des card:', Object.keys(schema.card))
 
   // Construction des conditions de filtrage
   const conditions = []
@@ -20,54 +20,54 @@ export default defineEventHandler(async (event) => {
   if (search) {
     const searchTerm = `%${search}%`
     conditions.push(
-      or(ilike(schema.cards.title, searchTerm), ilike(schema.cards.artist, searchTerm))
+      or(ilike(schema.card.title, searchTerm), ilike(schema.card.artist, searchTerm))
     )
   }
 
   if (cardRank) {
-    conditions.push(eq(schema.cards.rank, cardRank))
+    conditions.push(eq(schema.card.rank, cardRank))
   }
 
   if (cardSuit) {
-    conditions.push(eq(schema.cards.suit, cardSuit))
+    conditions.push(eq(schema.card.suit, cardSuit))
   }
 
   if (year) {
-    conditions.push(eq(schema.cards.year, year))
+    conditions.push(eq(schema.card.year, year))
   }
 
   // Requête pour le comptage total
   const countQuery = db
     .select({ count: sql<number>`count(*)` })
-    .from(schema.cards)
+    .from(schema.card)
     .$dynamic()
 
   // Log pour débogage SQL
   console.log('Requête de comptage SQL:', countQuery.toSQL())
 
   // Requête pour les données paginées
-  const cardsQuery = db
+  const cardQuery = db
     .select()
-    .from(schema.cards)
+    .from(schema.card)
     .$dynamic()
     .limit(PAGE_SIZE)
     .offset(offset)
-    .orderBy(schema.cards.title)
+    .orderBy(schema.card.title)
 
   // Application des conditions si elles existent
   if (conditions.length > 0) {
     const where = and(...conditions)
     countQuery.where(where)
-    cardsQuery.where(where)
+    cardQuery.where(where)
   }
 
-  const [countResult, cards] = await Promise.all([countQuery, cardsQuery])
+  const [countResult, card] = await Promise.all([countQuery, cardQuery])
 
   const totalItems = countResult[0]?.count || 0
   const totalPages = Math.ceil(totalItems / PAGE_SIZE)
 
   return {
-    data: cards,
+    data: card,
     pagination: {
       currentPage: page,
       pageSize: PAGE_SIZE,

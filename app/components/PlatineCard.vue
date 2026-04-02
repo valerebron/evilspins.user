@@ -2,13 +2,17 @@
   <section class="platine-card text-center" :class="{ 'open': isOpen }">
     <Card :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
       :is-loading="isLoading" showPlayButtonFaceUp />
-    <Platine v-if="isPlatineInit" ref="platineRef" :card="card" @loaded="onTrackLoaded" v-show="isOpen" />
+
+    <CardPlayer v-if="isPlatineInit" ref="playerRef" :card="props.card" @loaded="onTrackLoaded" v-show="isOpen" />
+
     <Button v-if="isOpen" @click="closePlatine" key-alias="Escape" class="absolute top-0 right-0">Close</Button>
   </section>
 </template>
 
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
+import CardPlayer from '~/components/CardPlayer.vue'
+import { timeout } from '~/utils/timeout'
 
 const props = defineProps<{ card: Card }>()
 
@@ -17,7 +21,7 @@ const isOpen = ref(false)
 const isFaceUp = ref(false)
 const isLoading = ref(false)
 
-const platineRef = useTemplateRef('platineRef')
+const playerRef = useTemplateRef('playerRef')
 
 const clickOnCard = () => {
   if (!isPlatineInit.value) {
@@ -25,7 +29,7 @@ const clickOnCard = () => {
     isLoading.value = true
   } else {
     isOpen.value = true
-    platineRef.value?.play()
+    playerRef.value?.play()
   }
 }
 
@@ -33,10 +37,11 @@ const onTrackLoaded = async () => {
   isFaceUp.value = true
   await timeout(700)
   isOpen.value = true
-  document.title = `${props.card.artist} - ${props.card.title}`
+  const artist = props.card.artist ?? (props.card as any).name ?? 'Unknown Artist'
+  document.title = `${artist} - ${props.card.title}`
   isLoading.value = false
   await timeout(500)
-  platineRef.value?.play()
+  playerRef.value?.play()
 }
 
 const closePlatine = () => {

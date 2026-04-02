@@ -1,6 +1,6 @@
 export default defineEventHandler(async (event) => {
   try {
-    const randomCard = await $fetch(`${process.env.DATA_API_URL}/tarots/random`)
+    const randomCard = await $fetch(`${process.env.DATA_API_URL}/tarot/random`)
     return randomCard
   } catch (error) {
     console.error('Error fetching random tarot:', error)
