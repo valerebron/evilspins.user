@@ -1,5 +1,5 @@
 <template>
-  <div class="rank flex items-center justify-center size-7 absolute top-7 right-7">
+  <div class="rank flex items-center justify-center size-12 absolute top-7 right-7">
     <div class="suit text-7xl absolute" :class="color">
       <img :src="image" />
     </div>
