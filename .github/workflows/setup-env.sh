@@ -33,3 +33,5 @@ else
   changeEnvVar "APP_NAME" $APP_NAME_MAIN
   changeEnvVar "APP_DIR" "/var/docker-web/apps/$APP_NAME_MAIN"
 fi
+
+changeEnvVar "DATA_URL" $DATA_URL_DIST

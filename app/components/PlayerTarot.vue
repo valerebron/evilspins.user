@@ -128,46 +128,16 @@ defineExpose({ play, pause, togglePlay })
 
 <style scoped lang="scss">
 .tarot-player {
-  display: grid;
-  gap: 1rem;
-  align-items: center;
-  justify-items: center;
-  width: 100%;
-  padding: 1.2rem;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.35);
-  border-radius: 1.6rem;
-  text-align: center;
-
-  .meta {
-    display: grid;
-    gap: 0.4rem;
-  }
+  position: absolute;
+  bottom: 0;
+  z-index: 800;
+  background-color: black;
+  color: white;
+  padding: 10px;
 
   .title {
     font-size: 1rem;
     font-weight: 700;
-  }
-
-  .hint {
-    color: #d2d2d2;
-    font-size: 0.85rem;
-  }
-
-  .play-toggle {
-    padding: 0.85rem 1.2rem;
-    border: none;
-    border-radius: 999px;
-    background: #f8e6b4;
-    color: #1e1e1e;
-    font-weight: 700;
-    cursor: pointer;
-    min-width: 10rem;
-    transition: transform 0.15s ease;
-  }
-
-  .play-toggle:hover:not(:disabled) {
-    transform: scale(1.02);
   }
 
   &.loading {

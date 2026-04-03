@@ -14,7 +14,7 @@ services:
       LETSENCRYPT_HOST: "${DOMAIN}"
       PUID: "${PUID}"
       PGID: "${PGID}"
-      DATA_API_URL: "${DATA_API_URL}"
+      DATA_URL: "${DATA_URL}"
 
 networks:
   default:

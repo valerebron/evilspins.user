@@ -1,17 +1,14 @@
 <template>
-  <section class="platine-card text-center" :class="{ 'open': isOpen }">
+  <section class="playing-card text-center" :class="{ 'open': isOpen }">
     <Card :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
       :is-loading="isLoading" showPlayButtonFaceUp />
-
-    <CardPlayer v-if="isPlatineInit" ref="playerRef" :card="props.card" @loaded="onTrackLoaded" v-show="isOpen" />
-
+    <Platine v-if="isPlatineInit" ref="platineRef" :card="card" @loaded="onTrackLoaded" v-show="isOpen" />
     <Button v-if="isOpen" @click="closePlatine" key-alias="Escape" class="absolute top-0 right-0">Close</Button>
   </section>
 </template>
 
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
-import CardPlayer from '~/components/CardPlayer.vue'
 import { timeout } from '~/utils/timeout'
 
 const props = defineProps<{ card: Card }>()
@@ -39,6 +36,7 @@ const onTrackLoaded = async () => {
   isOpen.value = true
   const artist = props.card.artist ?? (props.card as any).name ?? 'Unknown Artist'
   document.title = `${artist} - ${props.card.title}`
+  window.history.pushState({}, '', `/card/${props.card.slug}`)
   isLoading.value = false
   await timeout(500)
   playerRef.value?.play()
@@ -53,7 +51,7 @@ const closePlatine = () => {
 <style scoped lang="scss">
 $open-speed: 0.4s;
 
-.platine-card {
+.playing-card {
   @apply size-card;
   max-height: 100vmin;
   max-width: 100vmin;

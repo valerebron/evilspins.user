@@ -8,30 +8,30 @@ export default eventHandler(async (event) => {
     })
   }
 
-  // const card = await db.select().from(schema.card).where(eq(schema.card.slug, slug)).get()
+  try {
+    const card = await $fetch(`${process.env.DATA_URL}api/card/slug/${slug}`)
 
-  if (!card) {
+    if (!card) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'Morceau non trouvé'
+      })
+    }
+
+    // Préfixer les URLs avec DATA_URL
+    if (card.url_audio) {
+      card.url_audio = `${process.env.DATA_URL}${card.url_audio}`
+    }
+    if (card.url_image) {
+      card.url_image = `${process.env.DATA_URL}${card.url_image}`
+    }
+
+    return card
+  } catch (error) {
+    console.error('Error fetching card by slug:', error)
     throw createError({
       statusCode: 404,
       statusMessage: 'Morceau non trouvé'
     })
-  }
-
-  return {
-    id: card.id,
-    esid: card.esid,
-    title: card.title,
-    artist: card.artist,
-    url_audio: card.url_audio,
-    url_image: card.url_image,
-    year: card.year,
-    month: card.month,
-    day: card.day,
-    hour: card.hour,
-    slug: card.slug,
-    suit: card.suit,
-    rank: card.rank,
-    createdAt: card.createdAt,
-    updatedAt: card.updatedAt
   }
 })

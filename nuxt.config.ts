@@ -4,17 +4,7 @@ const isProd = process.env.NODE_ENV === 'production'
 
 export default defineNuxtConfig({
   runtimeConfig: {
-    NUXT_URL_PREFIX: 'https://data.evilspins.com/files',
-    dataApiUrl: process.env.DATA_API_URL
-  },
-  nitro: {
-    routeRules: {
-      '/api/external/**': { 
-        proxy: {
-          to: 'https://data.evilspins.com/api/**'
-        }
-      }
-    }
+    dataUrl: '',
   },
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },

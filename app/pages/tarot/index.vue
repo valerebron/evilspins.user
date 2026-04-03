@@ -1,6 +1,6 @@
 <template>
   <section class="deck">
-    <PlatineCard v-for="(card, index) in card" :key="index" :card="card" />
+    <PlayingCard v-for="(card, index) in card" :key="index" :card="card" />
   </section>
 </template>
 
