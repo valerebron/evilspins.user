@@ -18,7 +18,7 @@ const isOpen = ref(false)
 const isFaceUp = ref(false)
 const isLoading = ref(false)
 
-const playerRef = useTemplateRef('playerRef')
+const platineRef = useTemplateRef('platineRef')
 
 const clickOnCard = () => {
   if (!isPlatineInit.value) {
@@ -26,7 +26,7 @@ const clickOnCard = () => {
     isLoading.value = true
   } else {
     isOpen.value = true
-    playerRef.value?.play()
+    platineRef.value?.play()
   }
 }
 
@@ -39,7 +39,7 @@ const onTrackLoaded = async () => {
   window.history.pushState({}, '', `/card/${props.card.slug}`)
   isLoading.value = false
   await timeout(500)
-  playerRef.value?.play()
+  platineRef.value?.play()
 }
 
 const closePlatine = () => {
