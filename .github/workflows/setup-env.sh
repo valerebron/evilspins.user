@@ -13,7 +13,6 @@ changeEnvVar() {
   fi
 }
 
-
 # Variables GitHub
 APP_NAME_MAIN="${GITHUB_REPOSITORY##*/}"
 BRANCH_NAME=$GITHUB_REF_NAME

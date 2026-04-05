@@ -15,14 +15,10 @@ jobs:
           set -a && source .env && set +a
           if [ -n "$APP_NAME" ]; then
             set -a && source .env && set +a
-            if [ -d "/var/docker-web/apps/${APP_NAME}" ]; then
-              bash /var/docker-web/src/cli.sh down "${APP_NAME}"
-            fi
-            rm -rf "$APP_DIR"
+            bash /var/docker-web/src/cli.sh rm -y "${APP_NAME}"
             mkdir "$APP_DIR"
             cp -a $(find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name 'node_modules') "$APP_DIR/"
             export COMPOSE_BAKE=false
-            docker rmi "${APP_NAME}" 2>/dev/null || true
             bash /var/docker-web/src/cli.sh build "${APP_NAME}"
           fi
 
