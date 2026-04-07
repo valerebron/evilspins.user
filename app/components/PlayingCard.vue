@@ -11,7 +11,10 @@
 import type { Card } from '~~/types/types'
 import { timeout } from '~/utils/timeout'
 
-const props = defineProps<{ card: Card }>()
+const props = defineProps<{
+  card: Card,
+  isRandom?: boolean
+}>()
 
 const isPlatineInit = ref(false)
 const isOpen = ref(false)
@@ -36,7 +39,10 @@ const onTrackLoaded = async () => {
   isOpen.value = true
   const artist = props.card.artist ?? (props.card as any).name ?? 'Unknown Artist'
   document.title = `${artist} - ${props.card.title}`
-  window.history.pushState({}, '', `/card/${props.card.slug}`)
+  // Modifier l'URL seulement si ce n'est pas une carte aléatoire
+  if (!props.isRandom) {
+    window.history.pushState({}, '', `/card/${props.card.slug}`)
+  }
   isLoading.value = false
   await timeout(500)
   platineRef.value?.play()
