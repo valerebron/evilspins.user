@@ -19,7 +19,8 @@
         height: progressPercentage + '%',
         width: progressPercentage + '%'
       }"></div>
-      <button class="power-button" @click="Power" @touchstart="Power" :disabled="isLoadingTrack">
+      <button @touchend="isPowerActive = false; Power()" @touchcancel="isPowerActive = false" :class="{ isPowerActive }"
+        class="power-button" @click="Power" @touchstart.passive="isPowerActive = true" :disabled="isLoadingTrack">
         <img class="macaron" src="/favicon.svg" v-if="!isEndOfTrack">
         <img class="macaron" @click="Rewind" src="/rewind.svg" v-if="isEndOfTrack" />
       </button>
@@ -47,6 +48,7 @@ const emit = defineEmits(['loaded'])
 const isLoadingTrack = ref(false)
 const isFirstPlay = ref(true)
 const isEndOfTrack = ref(false)
+const isPowerActive = ref(false)
 
 const progressPercentage = ref(0)
 const currentTurns = ref(0)
@@ -386,7 +388,8 @@ defineExpose({ pause, play, togglePlay, Reverse, Rewind, Wind })
       @apply size-2/3;
     }
 
-    &:active {
+    &:active,
+    &.isPowerActive {
       .macaron {
         transform: scale(0.8);
       }
