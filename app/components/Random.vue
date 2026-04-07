@@ -1,7 +1,5 @@
 <template>
-  <div>
-    <PlayingCard v-for="(cardItem, index) in card" :key="index" :card="cardItem" :isRandom="true" />
-  </div>
+  <PlayingCard v-for="(cardItem, index) in card" :key="index" :card="cardItem" :isRandom="true" />
 </template>
 
 <script setup lang="ts">
