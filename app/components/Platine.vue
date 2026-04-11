@@ -42,7 +42,7 @@ const props = withDefaults(defineProps<{
   card: undefined,
 })
 
-const emit = defineEmits(['loaded'])
+const emit = defineEmits(['loaded', 'finishPlaying'])
 
 // State
 const isLoadingTrack = ref(false)
@@ -119,6 +119,9 @@ const updateTurns = () => {
     totalTurns.value = newTotalTurns
     progressPercentage.value = newProgressPercentage
     isEndOfTrack.value = disc.value.secondsPlayed + 0.1 >= (disc.value as any)._duration
+    if (isEndOfTrack.value) {
+      emit('finishPlaying')
+    }
   }
 }
 
@@ -409,12 +412,6 @@ defineExpose({ pause, play, togglePlay, Reverse, Rewind, Wind })
     height: 20px;
     background: rgb(26, 26, 26);
     border-radius: 50%;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
 
   .bobine {
