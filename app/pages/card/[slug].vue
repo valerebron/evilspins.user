@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PlayingCard :card :isFaceUp />
+    <Card :card :isFaceUp />
   </div>
 </template>
 

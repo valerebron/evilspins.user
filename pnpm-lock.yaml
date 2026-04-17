@@ -57,6 +57,9 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.46.3
         version: 8.57.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
+      '@unlazy/nuxt':
+        specifier: ^1.1.0
+        version: 1.1.0(magicast@0.5.2)
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
@@ -1746,6 +1749,12 @@ packages:
     resolution: {integrity: sha512-zEWqg0nZM8acpuTZE40wkeUl8AhIe0tU0OkilVi1D4fmVjACrwoh5HP6aNqJ8kUnKsoy6D+R3Vi/O+fmdNGO7g==}
     peerDependencies:
       vue: '>=3.5.18'
+
+  '@unlazy/core@1.1.0':
+    resolution: {integrity: sha512-ezCESX729KqtP2hud3i0ucepMx5/tz4V9Z4KKHInIgcoqOz/vP9LpEDVl3hkkRfPuuv33C2YUOApMJECEai1Dw==}
+
+  '@unlazy/nuxt@1.1.0':
+    resolution: {integrity: sha512-P5kPaxiOzKeRgrjjgFx5cwMZfWkPOWVARpaJP7MOelSoXhbPwQaYO1r1fJPYjfmyhzcaS6goOvUIc5UcOmI3AA==}
 
   '@unrs/resolver-binding-android-arm-eabi@1.11.1':
     resolution: {integrity: sha512-ppLRUgHVaGRWUx0R0Ut06Mjo9gBaBkg3v/8AxusGLhsIotbBLuRk51rAzqLC8gq6NyyAojEXglNjzf6R948DNw==}
@@ -5400,6 +5409,9 @@ packages:
     resolution: {integrity: sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==}
     engines: {node: '>= 10.0.0'}
 
+  unlazy@1.1.0:
+    resolution: {integrity: sha512-uF2b6FL74e+EiUKywBWW+6ExLlZ0YrLEQFXromG1/eY1EfUh+AL1onEDv8WxRcDpDpOZyvtryQU4Unxhpb4Hvg==}
+
   unplugin-utils@0.3.1:
     resolution: {integrity: sha512-5lWVjgi6vuHhJ526bI4nlCOmkCIF3nnfXkCMDeMJrtdvxTs6ZFCM8oNufGTsDbKv/tJ/xj8RpvXjRuPBZJuJog==}
     engines: {node: '>=20.19.0'}
@@ -7569,6 +7581,16 @@ snapshots:
       hookable: 6.1.0
       unhead: 2.1.12
       vue: 3.5.30(typescript@5.9.3)
+
+  '@unlazy/core@1.1.0': {}
+
+  '@unlazy/nuxt@1.1.0(magicast@0.5.2)':
+    dependencies:
+      '@nuxt/kit': 4.4.2(magicast@0.5.2)
+      defu: 6.1.4
+      unlazy: 1.1.0
+    transitivePeerDependencies:
+      - magicast
 
   '@unrs/resolver-binding-android-arm-eabi@1.11.1':
     optional: true
@@ -11817,6 +11839,10 @@ snapshots:
       unplugin-utils: 0.3.1
 
   universalify@2.0.1: {}
+
+  unlazy@1.1.0:
+    dependencies:
+      '@unlazy/core': 1.1.0
 
   unplugin-utils@0.3.1:
     dependencies:

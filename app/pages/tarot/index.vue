@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PlayingCard v-for="(card, index) in card" :key="index" :card="card" />
+    <Card v-for="(card, index) in card" :key="index" :card="card" />
   </div>
 </template>
 

@@ -1,9 +1,9 @@
 <template>
-  <div class="rank flex items-center justify-center size-12 absolute top-7 right-7">
-    <div class="suit text-7xl absolute" :class="color">
+  <div class="rank flex items-center justify-center size-[20%] absolute top-[8%] right-[12%] text-[100%]">
+    <div class="suit absolute" :class="color">
       <img :src="image" />
     </div>
-    <div class="number text-white font-bold absolute -mt-1">
+    <div class="number text-white font-bold absolute -mt-1 size-[20%] text-[2cqw]">
       {{ number }}
     </div>
   </div>
@@ -35,8 +35,15 @@ const number = computed(() => {
 })
 </script>
 
-<style>
+<style scoped>
 .rank {
   transition: opacity 0.5s ease-in-out;
+  container-type: inline-size;
+}
+
+.number {
+  font-size: 34cqw;
+  line-height: 34cqw;
+  width: 100%;
 }
 </style>

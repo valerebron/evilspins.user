@@ -43,12 +43,6 @@ module.exports = {
           height: '100dvh',
           width: '100dvw'
         },
-        '.size-card': {
-          width: '14rem',
-          height: '20rem',
-          'min-width': '14rem',
-          'min-height': '20rem'
-        },
         '.size-100vmin': {
           width: '100vmin',
           height: '100vmin'

@@ -1,18 +1,18 @@
 <template>
-  <section class="deck">
+  <section class="centered">
     <slot />
   </section>
 </template>
 
 <style lang="scss" scoped>
-.deck {
+.centered {
   display: flex;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
   min-height: 100vh;
 
-  .playing-card {
+  .card {
     margin: 1rem;
   }
 }

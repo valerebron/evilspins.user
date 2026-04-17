@@ -1,21 +1,23 @@
 <template>
-  <PlayingCard v-for="(cardItem, index) in card" :key="index" :card="cardItem" :isRandom="true" />
+  <div class="flex items-center">
+    <div class="w-56">
+      <Card v-if="card" :card="card" :isRandom="true" />
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  layout: 'centered'
+})
 import type { Card } from '~~/types/types'
 
-const nbCard = 1
-const card = ref<Card[]>([])
+const card = ref<Card | null>(null)
 
-// Chargement des cartes
+// Chargement de la carte
 const loadCard = async () => {
   try {
-    const promises = Array(nbCard).fill(0).map(() =>
-      $fetch<Card>('/api/card/random')
-    )
-    const results = await Promise.all(promises)
-    card.value = results
+    card.value = await $fetch<Card>('/api/card/random')
   } catch (error) {
     console.error('Error loading card:', error)
   }
@@ -25,3 +27,9 @@ onMounted(async () => {
   await loadCard()
 })
 </script>
+
+<style>
+.grid {
+  display: grid;
+}
+</style>

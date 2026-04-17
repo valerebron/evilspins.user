@@ -1,6 +1,7 @@
 export interface Card {
   url_audio: string
   url_image: string
+  blurhash: string
   year: number
   month: string
   day: string

@@ -1,5 +1,5 @@
 <template>
-  <PlayingCard v-for="card in cards" :key="card.esid" :card="card" :is-face-up="true" :image-loading-type="'lazy'" />
+  <Card v-for="card in cards" :key="card.esid" :card="card" :is-face-up="true" :image-loading-type="'lazy'" />
 </template>
 
 <script setup lang="ts">
@@ -10,6 +10,6 @@ const { data: cards, pending, error } = await useFetch<Card[]>('/api/card')
 
 <style scoped lang="scss">
 .card {
-  @apply size-card m-4;
+  @apply w-80 m-4;
 }
 </style>
