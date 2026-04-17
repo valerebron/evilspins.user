@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center">
     <div class="w-56">
-      <Card v-if="card" :card="card" :isRandom="true" />
+      <Card v-if="card" :card="card" :isRandom="true" showPlayButtonFaceUp />
     </div>
   </div>
 </template>

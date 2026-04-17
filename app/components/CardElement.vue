@@ -8,7 +8,8 @@
     <div class="flip-inner" ref="cardElement">
       <!-- Face-Up -->
       <main
-        class="face-up z-10 p-[6%] hover:shadow-xl hover:scale-110 transition-all shadow-lg flex flex-col overflow-hidden border-2">
+        class="face-up z-10 p-[6%] hover:shadow-xl hover:scale-110 transition-all shadow-lg flex flex-col overflow-hidden border-2"
+        draggable="true">
 
         <Rank :card="props.card" />
 
@@ -16,7 +17,7 @@
         <figure class="cover">
           <PlayButton :is-loading="isLoading" />
           <UnLazyImage :src="props.card.url_image" alt="card cover" loading="lazy" :blurhash="props.card.blurhash"
-            class="cover-image w-full h-full object-cover object-center" />
+            class="cover-image w-full h-full object-cover object-center" draggable="false" />
         </figure>
 
         <!-- Body -->
@@ -36,7 +37,7 @@
         class="face-down z-10 p-[6%] bg-opacity-10 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden select-none">
         <figure class="cover">
           <PlayButton :is-loading="isLoading" />
-          <img src="/face-down.svg" class="cover-image" :style="{ backgroundColor: cardColor }" />
+          <img src="/face-down.svg" class="cover-image" :style="{ backgroundColor: cardColor }" draggable="false" />
         </figure>
       </footer>
     </div>

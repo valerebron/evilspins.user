@@ -1,7 +1,7 @@
 <template>
   <div class="rank flex items-center justify-center size-[20%] absolute top-[8%] right-[12%] text-[100%]">
     <div class="suit absolute" :class="color">
-      <img :src="image" />
+      <img :src="image" draggable="false" />
     </div>
     <div class="number text-white font-bold absolute -mt-1 size-[20%] text-[2cqw]">
       {{ number }}
