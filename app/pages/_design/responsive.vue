@@ -19,9 +19,6 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  layout: 'centered'
-})
 import type { Card } from '~~/types/types'
 
 const card = ref<Card | null>(null)

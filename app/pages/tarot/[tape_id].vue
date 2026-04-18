@@ -1,6 +1,6 @@
 <template>
-  <div v-for="card in tape_cards" :key="card.esid">
-    <Card :card="card" :isFaceUp="true" showPlayButtonFaceUp />
+  <div class="flex">
+    <Card v-for="card in tape_cards" :key="card.esid" :card="card" :isFaceUp="true" showPlayButtonFaceUp />
   </div>
 </template>
 
@@ -21,9 +21,3 @@ onMounted(async () => {
   }
 })
 </script>
-
-<style scoped>
-.card {
-  @apply size-card;
-}
-</style>

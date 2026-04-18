@@ -30,6 +30,10 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 button {
-  @apply m-[2%] p-[2%] bg-esyellow rounded-md text-black font-bold transition-transform active:scale-95;
+  @apply m-[2%] p-[2%] bg-esyellow rounded-full text-black font-bold transition-all active:scale-95;
+
+  &:hover {
+    @apply p-[3%];
+  }
 }
 </style>

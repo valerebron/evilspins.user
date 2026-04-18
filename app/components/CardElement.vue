@@ -8,8 +8,7 @@
     <div class="flip-inner" ref="cardElement">
       <!-- Face-Up -->
       <main
-        class="face-up z-10 p-[6%] hover:shadow-xl hover:scale-110 transition-all shadow-lg flex flex-col overflow-hidden border-2"
-        draggable="true">
+        class="face-up z-10 p-[6%] hover:shadow-xl hover:scale-110 transition-all shadow-lg flex flex-col overflow-hidden border-2">
 
         <Rank :card="props.card" />
 
@@ -66,12 +65,6 @@ const props = withDefaults(defineProps<{
 import { getYearColor } from '~/utils/colors'
 
 const cardColor = computed(() => getYearColor(props.card.year || 0))
-
-/* loading states of the card */
-const isApiLoaded = ref(false)
-const isImageLoaded = ref(false)
-const isTrackLoaded = ref(false)
-
 </script>
 
 <style lang="scss">
@@ -180,6 +173,19 @@ const isTrackLoaded = ref(false)
     .flip-inner {
       transform: rotateY(-170deg);
     }
+
+    &.is-dragging {
+      opacity: 0.65;
+      transform: scale(0.92) rotate(5deg) !important;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      z-index: 9999;
+      cursor: grabbing !important;
+
+      .play-button,
+      .card-body {
+        display: none !important;
+      }
+    }
   }
 
   .play-button {
@@ -204,20 +210,6 @@ const isTrackLoaded = ref(false)
   .face-down:active {
     .play-button {
       @apply scale-90;
-    }
-  }
-
-  &.is-dragging {
-    @apply opacity-50 scale-95 rotate-6;
-    cursor: grabbing !important;
-
-    .face-up {
-      @apply shadow-2xl;
-    }
-
-    .play-button,
-    .card-body {
-      display: none;
     }
   }
 }

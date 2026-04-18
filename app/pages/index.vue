@@ -1,9 +1,3 @@
 <template>
-  <Random />
+  <Game />
 </template>
-
-<script setup>
-definePageMeta({
-  layout: 'centered'
-})
-</script>
