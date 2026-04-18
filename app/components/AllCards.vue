@@ -1,22 +1,28 @@
 <template>
   <div class="game-container">
-    <div class="cards-container w-full" v-draggable="isClient ? [cards] : null">
+    <!-- Version SSR (sans draggable) -->
+    <div v-if="!isClient" class="cards-container w-full">
       <Card v-for="card in cards" :card="card" :isRandom="true" showPlayButtonFaceUp />
     </div>
 
-    <div class="pagination-controls" v-if="pagination">
-      <button @click="loadPage(pagination.page - 1)" :disabled="!pagination.hasPrev" class="pagination-btn">
-        Précédent
-      </button>
+    <!-- Version client (avec draggable) -->
+    <div v-else class="cards-container w-full" v-draggable="[cards]">
+      <Card v-for="card in cards" :card="card" :isRandom="true" showPlayButtonFaceUp />
+    </div>
 
-      <span class="page-info">
-        Page {{ pagination.page }} / {{ pagination.totalPages }}
-        ({{ pagination.total }} cartes)
-      </span>
+    <!-- Loader pour l'infinite scroll -->
+    <div ref="loadTrigger" class="load-trigger" v-if="hasMore && !isLoading">
+      <div class="loader"></div>
+    </div>
 
-      <button @click="loadPage(pagination.page + 1)" :disabled="!pagination.hasNext" class="pagination-btn">
-        Suivant
-      </button>
+    <!-- Message de fin -->
+    <div class="end-message" v-if="!hasMore && cards.length > 0">
+      Toutes les cartes ont été chargées ({{ cards.length }} cartes)
+    </div>
+
+    <!-- Message d'erreur -->
+    <div class="error-message" v-if="error">
+      Erreur lors du chargement des cartes
     </div>
   </div>
 </template>
@@ -41,29 +47,73 @@ interface ApiResponse {
 const cards = ref<Card[]>([])
 const pagination = ref<PaginationResponse | null>(null)
 const currentPage = ref(1)
-const pageSize = ref(12)
+const pageSize = ref(20) // Augmenté pour infinite scroll
 const isClient = ref(false)
+const isLoading = ref(false)
+const hasMore = ref(true)
+const error = ref<string | null>(null)
+const loadTrigger = ref<HTMLElement | null>(null)
 
-const loadCards = async (page: number = 1) => {
+const loadCards = async (page: number = 1, append: boolean = false) => {
+  if (isLoading.value || (!hasMore.value && page > 1)) return
+
+  isLoading.value = true
+  error.value = null
+
   try {
     const response = await $fetch<ApiResponse>(`/api/card?page=${page}&limit=${pageSize.value}`)
-    cards.value = response.data
+
+    if (append) {
+      cards.value = [...cards.value, ...response.data]
+    } else {
+      cards.value = response.data
+    }
+
     pagination.value = response.pagination
     currentPage.value = page
-  } catch (error) {
-    console.error('Error loading cards:', error)
+    hasMore.value = response.pagination.hasNext
+  } catch (err) {
+    console.error('Error loading cards:', err)
+    error.value = 'Erreur lors du chargement'
+  } finally {
+    isLoading.value = false
   }
 }
 
-const loadPage = (page: number) => {
-  if (page >= 1 && pagination.value && page <= pagination.value.totalPages) {
-    loadCards(page)
+const loadMore = async () => {
+  if (hasMore.value && !isLoading.value) {
+    await loadCards(currentPage.value + 1, true)
   }
+}
+
+// Intersection Observer pour infinite scroll
+const setupIntersectionObserver = () => {
+  if (!loadTrigger.value) return
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      const first = entries[0]
+      if (first.isIntersecting && hasMore.value && !isLoading.value) {
+        loadMore()
+      }
+    },
+    { threshold: 0.1 }
+  )
+
+  observer.observe(loadTrigger.value)
+
+  // Nettoyage
+  return () => observer.disconnect()
 }
 
 onMounted(async () => {
   isClient.value = true
   await loadCards()
+
+  // Setup intersection observer après le premier chargement
+  nextTick(() => {
+    setupIntersectionObserver()
+  })
 })
 </script>
 
@@ -84,39 +134,48 @@ onMounted(async () => {
   width: 100%;
 }
 
-.pagination-controls {
+.load-trigger {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 20px;
-  padding: 20px;
+  padding: 40px 20px;
   width: 100%;
-  max-width: 800px;
 }
 
-.pagination-btn {
-  padding: 8px 16px;
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.loader {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.pagination-btn:hover:not(:disabled) {
-  background-color: #2563eb;
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-.pagination-btn:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.page-info {
-  font-size: 14px;
+.end-message {
+  text-align: center;
+  padding: 40px 20px;
   color: #6b7280;
-  white-space: nowrap;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.error-message {
+  text-align: center;
+  padding: 20px;
+  color: #ef4444;
+  font-size: 14px;
+  background-color: #fef2f2;
+  border-radius: 6px;
+  margin: 20px;
 }
 
 @media (max-width: 768px) {
@@ -125,11 +184,6 @@ onMounted(async () => {
     gap: 15px;
     padding: 20px;
   }
-
-  .pagination-controls {
-    gap: 10px;
-    padding: 15px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -137,11 +191,6 @@ onMounted(async () => {
     grid-template-columns: 1fr;
     gap: 10px;
     padding: 15px;
-  }
-
-  .pagination-controls {
-    flex-direction: column;
-    gap: 10px;
   }
 }
 </style>
