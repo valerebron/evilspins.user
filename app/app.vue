@@ -1,10 +1,8 @@
 <template>
-  <div class="min-h-screen dark:bg-neutral-900" @keydown.esc="resetFocus">
-    <NuxtRouteAnnouncer />
-    <NuxtLayout>
-      <NuxtPage ref="pageContent" />
-    </NuxtLayout>
-  </div>
+  <NuxtRouteAnnouncer />
+  <NuxtLayout @keydown.esc="resetFocus">
+    <NuxtPage ref="pageContent" />
+  </NuxtLayout>
 </template>
 
 <script setup lang="ts">

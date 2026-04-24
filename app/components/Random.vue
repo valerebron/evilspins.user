@@ -1,9 +1,5 @@
 <template>
-  <div class="flex items-center">
-    <div class="w-56">
-      <Card v-if="card" :card="card" :isRandom="true" showPlayButtonFaceUp />
-    </div>
-  </div>
+  <Card v-if="card" :card="card" :isRandom="true" showPlayButtonFaceUp />
 </template>
 
 <script setup lang="ts">
@@ -24,9 +20,3 @@ onMounted(async () => {
   await loadCard()
 })
 </script>
-
-<style>
-.grid {
-  display: grid;
-}
-</style>

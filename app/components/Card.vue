@@ -59,7 +59,7 @@ const closePlatine = () => {
 </script>
 
 <style scoped lang="scss">
-$open-speed: 0.4s;
+$open-speed: 0.7s;
 
 .card {
   aspect-ratio: 7/10;
