@@ -93,9 +93,7 @@ const cardColor = computed(() => getYearColor(props.card.year || 0))
     .cover {
       @apply flex-1 flex justify-center items-center overflow-hidden cursor-pointer;
 
-      .cover-image {
-        border-radius: 0.75rem;
-      }
+      border-radius: 0.75rem;
     }
   }
 
