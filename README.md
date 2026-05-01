@@ -1,5 +1,7 @@
 # Todo
 Platine Store
+1 une carte face-cachée doit charger sur la carte
+2 une carte face-ouverte doit charger sur la platine ?
 Menu Button
 Mixtape Box
 Tarot specs
