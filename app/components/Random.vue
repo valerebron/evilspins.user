@@ -1,5 +1,7 @@
 <template>
-  <Card v-if="card" :card="card" :isRandom="true" showPlayButtonFaceUp />
+  <Transition name="scale-in">
+    <Card v-if="card" :card="card" :isRandom="true" showPlayButtonFaceUp />
+  </Transition>
 </template>
 
 <script setup lang="ts">
@@ -20,3 +22,19 @@ onMounted(async () => {
   await loadCard()
 })
 </script>
+
+<style scoped>
+.scale-in-enter-active {
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease-out;
+}
+
+.scale-in-enter-from {
+  transform: scale(0);
+  opacity: 0;
+}
+
+.scale-in-enter-to {
+  transform: scale(1);
+  opacity: 1;
+}
+</style>
