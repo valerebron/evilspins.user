@@ -1,6 +1,6 @@
 <template>
   <Transition name="scale-in">
-    <Card v-if="card" :card="card" :isRandom="true" showPlayButtonFaceUp />
+    <Card v-if="card" :card="card" :isRandom="true" />
   </Transition>
 </template>
 
