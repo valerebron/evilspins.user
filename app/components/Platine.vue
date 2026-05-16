@@ -148,16 +148,16 @@ const play = (position = 0) => {
   isFirstPlay.value = false
   if (!disc.value || !sampler.value || !props.card) return
 
-  sampler.value.play(position)
-  disc.value.powerOn()
+  sampler.value.play(position, true)
+  disc.value.powerOnWithAcceleration()
 }
 
 const pause = () => {
   // console.log('[PAUSE]')
   if (!disc.value || !sampler.value) return
 
-  sampler.value.pause()
-  disc.value.powerOff()
+  sampler.value.pauseWithDeceleration()
+  disc.value.powerOffWithDeceleration()
 }
 
 const togglePlay = () => {

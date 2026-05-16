@@ -153,9 +153,61 @@ class Disc {
     this.start()
   }
 
+  powerOnWithAcceleration(duration = 1500) {
+    this._isPoweredOn = true
+    const targetSpeed = this.isReversed ? -1 : 1
+    const startTime = performance.now()
+    const startSpeed = 0
+
+    const accelerate = (timestamp: number) => {
+      const elapsed = timestamp - startTime
+      const progress = Math.min(elapsed / duration, 1)
+
+      // Courbe d'easing pour un effet naturel (easeOutCubic inversé)
+      const easeIn = 1 - Math.pow(1 - progress, 3)
+
+      // Augmenter progressivement la vitesse
+      this._basePlaybackSpeed = startSpeed + (targetSpeed - startSpeed) * easeIn
+
+      if (progress < 1) {
+        requestAnimationFrame(accelerate)
+      } else {
+        this._basePlaybackSpeed = targetSpeed
+      }
+    }
+
+    this.start()
+    requestAnimationFrame(accelerate)
+  }
+
   powerOff() {
     this._isPoweredOn = false
     this._basePlaybackSpeed = 0
+  }
+
+  powerOffWithDeceleration(duration = 1500) {
+    const startTime = performance.now()
+    const startSpeed = this._basePlaybackSpeed
+
+    const decelerate = (timestamp: number) => {
+      const elapsed = timestamp - startTime
+      const progress = Math.min(elapsed / duration, 1)
+
+      // Courbe d'easing pour un effet naturel (easeOutCubic)
+      const easeOut = 1 - Math.pow(1 - progress, 3)
+
+      // Réduire progressivement la vitesse
+      this._basePlaybackSpeed = startSpeed * (1 - easeOut)
+
+      if (progress < 1) {
+        requestAnimationFrame(decelerate)
+      } else {
+        this._basePlaybackSpeed = 0
+        this._isPoweredOn = false
+      }
+    }
+
+    requestAnimationFrame(decelerate)
   }
 
   public setDuration(duration: number) {

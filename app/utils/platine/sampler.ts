@@ -51,7 +51,7 @@ class Sampler {
     this.play(safePosition)
   }
 
-  play(offset = 0) {
+  play(offset = 0, withAcceleration = true) {
     this.pause()
 
     if (!this.audioBuffer || !this.audioBufferReversed) {
@@ -73,6 +73,25 @@ class Sampler {
     // S'assurer que le cueTime n'est pas négatif
     const startTime = Math.max(0, cueTime)
     this.audioSource.start(0, startTime)
+
+    // Accélération progressive si demandé
+    if (withAcceleration) {
+      const currentTime = this.audioContext.currentTime
+      const accelerationDuration = 1.5
+
+      // Commencer à une vitesse très faible
+      this.audioSource.playbackRate.value = 0.001
+
+      // Accélérer progressivement jusqu'à la vitesse normale
+      this.audioSource.playbackRate.linearRampToValueAtTime(
+        1.0,
+        currentTime + accelerationDuration
+      )
+
+      this.currentSpeed = 1.0
+    } else {
+      this.currentSpeed = 1.0
+    }
   }
 
   updateSpeed(speed: number, isReversed: boolean, secondsPlayed: number) {
@@ -103,6 +122,31 @@ class Sampler {
     }
 
     this.audioSource.stop()
+  }
+
+  pauseWithDeceleration(duration = 1.5) {
+    if (!this.audioSource) {
+      return
+    }
+
+    const currentTime = this.audioContext.currentTime
+
+    // Réduire progressivement la vitesse de lecture
+    this.audioSource.playbackRate.cancelScheduledValues(currentTime)
+    this.audioSource.playbackRate.linearRampToValueAtTime(
+      0.001,
+      currentTime + duration
+    )
+
+    // Arrêter l'audio après la décélération
+    setTimeout(() => {
+      if (this.audioSource) {
+        this.audioSource.stop()
+      }
+    }, duration * 1000)
+
+    // Mettre à jour la vitesse actuelle
+    this.currentSpeed = 0
   }
 
   /**
