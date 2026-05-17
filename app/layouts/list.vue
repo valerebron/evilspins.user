@@ -4,6 +4,16 @@
   </section>
 </template>
 
+<script setup lang="ts">
+const { openCardId, setAllowMultipleOpen } = useCardOpenState()
+
+// Default behavior: only one card can be open at a time
+setAllowMultipleOpen(false)
+
+// Provide the open card ID to child components
+provide('openCardId', openCardId)
+</script>
+
 <style lang="scss">
 .card-list {
   display: flex;
@@ -16,7 +26,6 @@
 
   place-items: center;
   justify-content: center;
-  padding: 20px;
   gap: 20px;
 
   min-height: 100svh;
@@ -33,10 +42,7 @@
 
   &.close {
     opacity: 0;
-
-    @screen lg {
-      width: 0;
-    }
+    width: 0;
 
     overflow: hidden;
     margin: 0;

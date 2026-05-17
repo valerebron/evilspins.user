@@ -1,5 +1,5 @@
 <template>
-  <section class="card text-center" :class="{ 'open': isOpen }">
+  <section class="card text-center" :class="{ 'open': isOpen, 'close': shouldClose }">
     <CardElement :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
       :is-loading="isLoading" :showPlayButtonFaceUp="props.showPlayButtonFaceUp" />
     <Platine v-if="isPlatineInit" ref="platineRef" :card="card" @loaded="onTrackLoaded" @finishPlaying="closePlatine"
@@ -20,20 +20,38 @@ const props = defineProps<{
   showPlayButtonFaceUp?: boolean
 }>()
 
+const emit = defineEmits(['open', 'close'])
+
 const isPlatineInit = ref(false)
 const isOpen = ref(false)
 const isFaceUp = ref(props.isFaceUp)
 const isLoading = ref(false)
 
 const platineRef = useTemplateRef('platineRef')
+const { openCard, closeCard, isCardOpen, openCardId } = useCardOpenState()
+
+const cardId = computed(() => props.card.slug)
+
+const shouldClose = computed(() => {
+  // If this card is open, don't close it
+  if (isOpen.value) return false
+  // If no card is open, don't close this one
+  if (!openCardId.value) return false
+  // If another card is open, close this one
+  return openCardId.value !== cardId.value
+})
 
 const clickOnCard = () => {
+  // Close other cards immediately on click
+  openCard(cardId.value)
+
   if (!isPlatineInit.value) {
     isPlatineInit.value = true
     isLoading.value = true
   } else {
     isOpen.value = true
     platineRef.value?.play()
+    emit('open')
   }
 }
 
@@ -41,6 +59,7 @@ const onTrackLoaded = async () => {
   isFaceUp.value = true
   await timeout(700)
   isOpen.value = true
+  emit('open')
   const artist = props.card.artist ?? (props.card as any).name ?? 'Unknown Artist'
   document.title = `${artist} - ${props.card.title}`
   // Modifier l'URL seulement si ce n'est pas une carte aléatoire
@@ -55,6 +74,8 @@ const onTrackLoaded = async () => {
 const closePlatine = () => {
   isOpen.value = false
   isPlatineInit.value = false
+  closeCard(cardId.value)
+  emit('close')
 }
 </script>
 
