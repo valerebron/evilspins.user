@@ -8,8 +8,11 @@
       <button @click="Rewind">
         Rewind
       </button>
-      <button @click="Wind">
-        Wind
+      <button @click="NextOnSec">
+        Next Five
+      </button>
+      <button @click="PrevOneSec">
+        Prev Five
       </button>
       <!-- <div>{{ progressPercentage }}</div> -->
       <div>{{ (currentSpeed).toFixed(2) }}</div>
@@ -293,15 +296,109 @@ const Rewind = async () => {
   scratchEffect()
 }
 
-const Wind = () => {
-  disc.value.secondsPlayed = duration
-  sampler.value.secondsPlayed = duration
+
+const NextOnSec = () => {
+  if (!disc.value || !sampler.value) return
+
+  const currentPosition = disc.value.secondsPlayed || 0
+  const newPosition = Math.min(currentPosition + 1, (disc.value as any)._duration)
+  const wasPlaying = !disc.value.isStopped()
+
+  const scratchEffect = () => {
+    const scratchDuration = 300
+    const scratchStart = performance.now()
+    const startAngle = currentPosition * 0.75 * Math.PI * 2 // Convert seconds to radians
+    const targetAngle = newPosition * 0.75 * Math.PI * 2
+
+    const scratch = (timestamp: number) => {
+      const elapsed = timestamp - scratchStart
+      const progress = Math.min(elapsed / scratchDuration, 1)
+
+      // Effet de scratch vers l'avant
+      if (progress < 0.5) {
+        const scratchProgress = progress * 2
+        const scratchSpeed = 1 + (scratchProgress * 2) // Accélère de 1 à 3
+        sampler.value?.setPlaybackRate(scratchSpeed)
+      } else {
+        const pullProgress = (progress - 0.5) * 2
+        const pullSpeed = 3 - (pullProgress * 2) // Ralentit de 3 à 1
+        sampler.value?.setPlaybackRate(pullSpeed)
+      }
+
+      // Mettre à jour l'angle du disque
+      const currentAngle = startAngle + ((targetAngle - startAngle) * progress)
+      disc.value?.setAngle(currentAngle)
+
+      if (progress < 1) {
+        requestAnimationFrame(scratch)
+      } else {
+        sampler.value?.play(newPosition, wasPlaying)
+        disc.value?.setAngle(targetAngle)
+      }
+    }
+
+    requestAnimationFrame(scratch)
+  }
+
+  scratchEffect()
+}
+
+const PrevOneSec = () => {
+  if (!disc.value || !sampler.value) return
+
+  const currentPosition = disc.value.secondsPlayed || 0
+  const newPosition = Math.max(currentPosition - 1, 0)
+  const wasPlaying = !disc.value.isStopped()
+
+  const scratchEffect = () => {
+    const scratchDuration = 300
+    const scratchStart = performance.now()
+    const startAngle = currentPosition * 0.75 * Math.PI * 2 // Convert seconds to radians
+    const targetAngle = newPosition * 0.75 * Math.PI * 2
+
+    const scratch = (timestamp: number) => {
+      const elapsed = timestamp - scratchStart
+      const progress = Math.min(elapsed / scratchDuration, 1)
+
+      // Effet de scratch vers l'arrière
+      if (progress < 0.5) {
+        const scratchProgress = progress * 2
+        const scratchSpeed = 1 - (scratchProgress * 2) // Ralentit de 1 à -1
+        sampler.value?.setPlaybackRate(scratchSpeed)
+      } else {
+        const pullProgress = (progress - 0.5) * 2
+        const pullSpeed = -1 + (pullProgress * 2) // Accélère de -1 à 1
+        sampler.value?.setPlaybackRate(pullSpeed)
+      }
+
+      // Mettre à jour l'angle du disque
+      const currentAngle = startAngle + ((targetAngle - startAngle) * progress)
+      disc.value?.setAngle(currentAngle)
+
+      if (progress < 1) {
+        requestAnimationFrame(scratch)
+      } else {
+        sampler.value?.play(newPosition, wasPlaying)
+        disc.value?.setAngle(targetAngle)
+      }
+    }
+
+    requestAnimationFrame(scratch)
+  }
+
+  scratchEffect()
 }
 
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
     e.preventDefault() // Empêcher le défilement de la page
     togglePlay()
+  } else if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
+    e.preventDefault()
+    NextOnSec()
+  } else if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
+    e.preventDefault()
+    PrevOneSec()
   }
 }
 
@@ -331,7 +428,7 @@ watch(() => props.card, (newCard) => {
   }
 })
 
-defineExpose({ pause, play, togglePlay, Reverse, Rewind, Wind })
+defineExpose({ pause, play, togglePlay, Reverse, Rewind })
 </script>
 
 <style lang="scss">
