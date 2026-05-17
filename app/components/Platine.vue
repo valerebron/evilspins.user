@@ -82,7 +82,8 @@ const initPlatine = (element: HTMLElement) => {
       // Activer le son à chaque fois qu'on glisse, pas seulement au premier play
       if (sampler.value && disc.value) {
         // On joue toujours le son quand on glisse, même après une pause
-        sampler.value.play(disc.value.secondsPlayed || 0)
+        // Sans accélération pour le scratch
+        sampler.value.play(disc.value.secondsPlayed || 0, false)
       }
     }
 

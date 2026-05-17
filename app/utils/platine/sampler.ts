@@ -9,6 +9,7 @@ class Sampler {
   public duration: number = 0
   public isReversed: boolean = false
   public currentSpeed: number = 0
+  private stopTimeoutId: number | null = null // ID du setTimeout pour annuler l'arrêt
 
   constructor() {
     this.gainNode.connect(this.audioContext.destination)
@@ -52,6 +53,12 @@ class Sampler {
   }
 
   play(offset = 0, withAcceleration = true) {
+    // Annuler le timeout d'arrêt programmé s'il existe
+    if (this.stopTimeoutId !== null) {
+      clearTimeout(this.stopTimeoutId)
+      this.stopTimeoutId = null
+    }
+
     this.pause()
 
     if (!this.audioBuffer || !this.audioBufferReversed) {
@@ -90,11 +97,19 @@ class Sampler {
 
       this.currentSpeed = 1.0
     } else {
+      // Sans accélération, vitesse normale immédiate
+      this.audioSource.playbackRate.value = 1.0
       this.currentSpeed = 1.0
     }
   }
 
   updateSpeed(speed: number, isReversed: boolean, secondsPlayed: number) {
+    // Annuler le timeout d'arrêt programmé s'il existe (quand on relance pendant une décélération)
+    if (this.stopTimeoutId !== null) {
+      clearTimeout(this.stopTimeoutId)
+      this.stopTimeoutId = null
+    }
+
     if (!this.audioSource) {
       return
     }
@@ -117,6 +132,12 @@ class Sampler {
   }
 
   pause() {
+    // Annuler le timeout d'arrêt programmé s'il existe
+    if (this.stopTimeoutId !== null) {
+      clearTimeout(this.stopTimeoutId)
+      this.stopTimeoutId = null
+    }
+
     if (!this.audioSource) {
       return
     }
@@ -139,11 +160,12 @@ class Sampler {
     )
 
     // Arrêter l'audio après la décélération
-    setTimeout(() => {
+    this.stopTimeoutId = setTimeout(() => {
       if (this.audioSource) {
         this.audioSource.stop()
       }
-    }, duration * 1000)
+      this.stopTimeoutId = null
+    }, duration * 1000) as unknown as number
 
     // Mettre à jour la vitesse actuelle
     this.currentSpeed = 0

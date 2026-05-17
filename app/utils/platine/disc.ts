@@ -79,6 +79,8 @@ class Disc {
   private _lastDragTime: number = 0 // Dernier temps de drag
   private _inertiaAmplification: number = 25 // Facteur d'amplification de l'inertie
   private _previousDuration: number = 0 // Pour suivre les changements de durée
+  private _accelerationRafId: number | null = null // ID de l'animation d'accélération
+  private _decelerationRafId: number | null = null // ID de l'animation de décélération
 
   public isReversed: boolean = false
 
@@ -148,16 +150,30 @@ class Disc {
   }
 
   powerOn() {
+    // Annuler la décélération en cours si elle existe
+    if (this._decelerationRafId !== null) {
+      cancelAnimationFrame(this._decelerationRafId)
+      this._decelerationRafId = null
+      // Si on annule une décélération, utiliser l'accélération pour une transition fluide
+      this.powerOnWithAcceleration()
+      return
+    }
     this._isPoweredOn = true
     this._basePlaybackSpeed = this.isReversed ? -1 : 1
     this.start()
   }
 
   powerOnWithAcceleration(duration = 1500) {
+    // Annuler la décélération en cours si elle existe
+    if (this._decelerationRafId !== null) {
+      cancelAnimationFrame(this._decelerationRafId)
+      this._decelerationRafId = null
+    }
+
     this._isPoweredOn = true
     const targetSpeed = this.isReversed ? -1 : 1
     const startTime = performance.now()
-    const startSpeed = 0
+    const startSpeed = this._basePlaybackSpeed // Utiliser la vitesse actuelle
 
     const accelerate = (timestamp: number) => {
       const elapsed = timestamp - startTime
@@ -170,22 +186,37 @@ class Disc {
       this._basePlaybackSpeed = startSpeed + (targetSpeed - startSpeed) * easeIn
 
       if (progress < 1) {
-        requestAnimationFrame(accelerate)
+        this._accelerationRafId = requestAnimationFrame(accelerate)
       } else {
         this._basePlaybackSpeed = targetSpeed
+        this._accelerationRafId = null
       }
     }
 
     this.start()
-    requestAnimationFrame(accelerate)
+    this._accelerationRafId = requestAnimationFrame(accelerate)
   }
 
   powerOff() {
+    // Annuler l'accélération en cours si elle existe
+    if (this._accelerationRafId !== null) {
+      cancelAnimationFrame(this._accelerationRafId)
+      this._accelerationRafId = null
+      // Si on annule une accélération, utiliser la décélération pour une transition fluide
+      this.powerOffWithDeceleration()
+      return
+    }
     this._isPoweredOn = false
     this._basePlaybackSpeed = 0
   }
 
   powerOffWithDeceleration(duration = 1500) {
+    // Annuler l'accélération en cours si elle existe
+    if (this._accelerationRafId !== null) {
+      cancelAnimationFrame(this._accelerationRafId)
+      this._accelerationRafId = null
+    }
+
     const startTime = performance.now()
     const startSpeed = this._basePlaybackSpeed
 
@@ -200,14 +231,15 @@ class Disc {
       this._basePlaybackSpeed = startSpeed * (1 - easeOut)
 
       if (progress < 1) {
-        requestAnimationFrame(decelerate)
+        this._decelerationRafId = requestAnimationFrame(decelerate)
       } else {
         this._basePlaybackSpeed = 0
         this._isPoweredOn = false
+        this._decelerationRafId = null
       }
     }
 
-    requestAnimationFrame(decelerate)
+    this._decelerationRafId = requestAnimationFrame(decelerate)
   }
 
   public setDuration(duration: number) {
@@ -329,12 +361,16 @@ class Disc {
 
     this.isDragging = false
 
-    // Toujours conserver la vitesse de base actuelle (1 si allumé, 0 si éteint)
-    this._basePlaybackSpeed = this._isPoweredOn ? (this.isReversed ? -1 : 1) : 0
+    // Ne pas réinitialiser _basePlaybackSpeed si une transition est en cours
+    // pour éviter de casser l'accélération/décélération
+    if (this._accelerationRafId === null && this._decelerationRafId === null) {
+      // Toujours conserver la vitesse de base actuelle (1 si allumé, 0 si éteint)
+      this._basePlaybackSpeed = this._isPoweredOn ? (this.isReversed ? -1 : 1) : 0
 
-    // Si le lecteur est éteint, s'assurer que la vitesse de base est bien à 0
-    if (!this._isPoweredOn) {
-      this._basePlaybackSpeed = 0
+      // Si le lecteur est éteint, s'assurer que la vitesse de base est bien à 0
+      if (!this._isPoweredOn) {
+        this._basePlaybackSpeed = 0
+      }
     }
 
     this.callbacks.onDragEnded(this.secondsPlayed)
@@ -475,8 +511,8 @@ class Disc {
     // Inverser la direction
     this.isReversed = !this.isReversed
 
-    // Inverser la vitesse de base si nécessaire
-    if (this._isPoweredOn) {
+    // Inverser la vitesse de base si nécessaire, mais seulement si aucune transition n'est en cours
+    if (this._isPoweredOn && this._accelerationRafId === null && this._decelerationRafId === null) {
       this._basePlaybackSpeed = this.isReversed ? -1 : 1
     }
 
