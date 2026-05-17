@@ -1,11 +1,13 @@
 <template>
-  <div>
-    <Card :card :isFaceUp />
-  </div>
+  <Card :card :is-face-up="isFaceUp" />
 </template>
 
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
+
+definePageMeta({
+  layout: 'centered'
+})
 
 const isFaceUp = ref(false)
 const route = useRoute()
@@ -21,6 +23,7 @@ useHead({
 onMounted(() => {
   setTimeout(() => {
     isFaceUp.value = true
+    console.log('face up please')
   }, 700)
 })
 </script>

@@ -24,7 +24,7 @@ const emit = defineEmits(['open', 'close'])
 
 const isPlatineInit = ref(false)
 const isOpen = ref(false)
-const isFaceUp = ref(props.isFaceUp)
+const isFaceUp = ref(props.isFaceUp ?? false) // marche pour les cartes random
 const isLoading = ref(false)
 
 const platineRef = useTemplateRef('platineRef')
