@@ -8,10 +8,10 @@
       <button @click="Rewind">
         Rewind
       </button>
-      <button @click="NextOnSec">
+      <button @click="NextFourSec">
         Next Five
       </button>
-      <button @click="PrevOneSec">
+      <button @click="PrevFourSec">
         Prev Five
       </button>
       <!-- <div>{{ progressPercentage }}</div> -->
@@ -297,11 +297,11 @@ const Rewind = async () => {
 }
 
 
-const NextOnSec = () => {
+const NextFourSec = () => {
   if (!disc.value || !sampler.value) return
 
   const currentPosition = disc.value.secondsPlayed || 0
-  const newPosition = Math.min(currentPosition + 1, (disc.value as any)._duration)
+  const newPosition = Math.min(currentPosition + 4, (disc.value as any)._duration)
   const wasPlaying = !disc.value.isStopped()
 
   const scratchEffect = () => {
@@ -343,11 +343,11 @@ const NextOnSec = () => {
   scratchEffect()
 }
 
-const PrevOneSec = () => {
+const PrevFourSec = () => {
   if (!disc.value || !sampler.value) return
 
   const currentPosition = disc.value.secondsPlayed || 0
-  const newPosition = Math.max(currentPosition - 1, 0)
+  const newPosition = Math.max(currentPosition - 4, 0)
   const wasPlaying = !disc.value.isStopped()
 
   const scratchEffect = () => {
@@ -395,10 +395,10 @@ const handleKeyDown = (e: KeyboardEvent) => {
     togglePlay()
   } else if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
     e.preventDefault()
-    NextOnSec()
+    NextFourSec()
   } else if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
     e.preventDefault()
-    PrevOneSec()
+    PrevFourSec()
   }
 }
 
