@@ -37,8 +37,8 @@
     </div>
 
     <div class="cards-grid">
-      <Card v-for="card in filteredCards" :key="card.esid" :card="card" :is-face-up="true"
-        :image-loading-type="'lazy'" />
+      <Card v-for="card in filteredCards" :key="card.esid" :card="card" :is-face-up="true" :image-loading-type="'lazy'"
+        :navigate-on-click="true" />
     </div>
 
     <div v-if="filteredCards.length === 0" class="no-results">
