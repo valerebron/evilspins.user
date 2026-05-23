@@ -1,5 +1,5 @@
 <template>
-  <Card :card :is-face-up="isFaceUp" />
+  <Card :card :is-face-up="isFaceUp" :autoplay="autoplay" />
 </template>
 
 <script setup lang="ts">
@@ -12,6 +12,7 @@ definePageMeta({
 const isFaceUp = ref(false)
 const route = useRoute()
 const slug = route.params.slug as string
+const autoplay = computed(() => route.query.autoplay === 'true')
 const { data: card, pending, error } = await useFetch<Card>(`/api/card/${slug}`)
 
 useHead({
@@ -23,7 +24,6 @@ useHead({
 onMounted(() => {
   setTimeout(() => {
     isFaceUp.value = true
-    console.log('face up please')
   }, 700)
 })
 </script>

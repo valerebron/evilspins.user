@@ -17,7 +17,9 @@ const props = defineProps<{
   card: Card,
   isFaceUp?: boolean,
   isRandom?: boolean,
-  showPlayButtonFaceUp?: boolean
+  showPlayButtonFaceUp?: boolean,
+  navigateOnClick?: boolean,
+  autoplay?: boolean
 }>()
 
 const emit = defineEmits(['open', 'close'])
@@ -42,6 +44,11 @@ const shouldClose = computed(() => {
 })
 
 const clickOnCard = () => {
+  if (props.navigateOnClick) {
+    navigateTo(`/card/${props.card.slug}?autoplay=true`)
+    return
+  }
+
   // Close other cards immediately on click
   openCard(cardId.value)
 
@@ -77,6 +84,14 @@ const closePlatine = () => {
   closeCard(cardId.value)
   emit('close')
 }
+
+// Auto-play logic when autoplay prop is true
+watch(() => props.autoplay, (autoplay) => {
+  if (autoplay && !isPlatineInit.value) {
+    isPlatineInit.value = true
+    isLoading.value = true
+  }
+}, { immediate: true })
 </script>
 
 <style scoped lang="scss">
