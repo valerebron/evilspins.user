@@ -23,11 +23,14 @@ const showSearch = ref(false)
 <style lang="scss">
 .card-list {
   display: flex;
-  flex-wrap: wrap;
-  flex-direction: column;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  overflow-x: auto;
 
   @screen md {
+    flex-wrap: wrap;
     flex-direction: row;
+    overflow-x: visible;
   }
 
   place-items: center;
