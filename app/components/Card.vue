@@ -1,7 +1,7 @@
 <template>
   <section class="card text-center" :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted }">
     <CardElement :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
-      :is-loading="isLoading" :showPlayButton="props.showPlayButton" />
+      :is-loading="isLoading" />
     <Platine v-if="isPlatineInit" ref="platineRef" :card="card" @loaded="onTrackLoaded" @finishPlaying="closePlatine"
       v-show="isOpen" />
     <Button v-if="isOpen" @click="closePlatine" key-alias="Escape" class="absolute top-0 right-0"></Button>
@@ -17,7 +17,6 @@ const props = defineProps<{
   card: Card,
   isFaceUp?: boolean,
   isRandom?: boolean,
-  showPlayButton?: boolean,
   navigateOnClick?: boolean,
   autoplay?: boolean
 }>()
@@ -28,12 +27,10 @@ const isPlatineInit = ref(false)
 const isOpen = ref(false)
 
 // animation on mount so all Card instances animate when inserted
-const isMounted = ref(false)
+const isMounted = ref(true)
 
 onMounted(() => {
-  // trigger enter animation on client
-  isMounted.value = true
-  // remove the flag after the animation duration
+  // keep the enter animation class for the first render
   setTimeout(() => {
     isMounted.value = false
   }, 700)

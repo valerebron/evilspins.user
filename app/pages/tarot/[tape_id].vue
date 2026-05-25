@@ -1,6 +1,6 @@
 <template>
   <div class="flex">
-    <Card v-for="card in tape_cards" :key="card.esid" :card="card" :isFaceUp="true" showPlayButtonFaceUp />
+    <Card v-for="card in tape_cards" :key="card.esid" :card="card" :isFaceUp="true" />
   </div>
 </template>
 

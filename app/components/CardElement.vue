@@ -1,8 +1,7 @@
 <template>
   <article :role="props.role" :class="[
     'card-element cursor-pointer',
-    isFaceUp ? 'face-up' : 'face-down',
-    showPlayButton ? 'show-play-button' : ''
+    isFaceUp ? 'face-up' : 'face-down'
   ]" :tabindex="props.tabindex" :aria-disabled="false" @click="$emit('click', $event)"
     @keydown.enter="$emit('click', $event)">
     <div class="flip-inner" ref="cardElement">
@@ -54,12 +53,10 @@ const props = withDefaults(defineProps<{
   isLoading?: boolean;
   role?: string;
   tabindex?: string | number;
-  showPlayButton?: boolean;
 }>(), {
   isFaceUp: false,
   role: 'button',
-  tabindex: '0',
-  showPlayButton: false
+  tabindex: '0'
 })
 
 import { getYearColor } from '~/utils/colors'
@@ -184,12 +181,6 @@ const cardColor = computed(() => getYearColor(props.card.year || 0))
 
   .play-button {
     @apply absolute opacity-0 hover:opacity-100;
-  }
-
-  &.show-play-button {
-    .play-button {
-      opacity: 1;
-    }
   }
 
   .cover-image:active,
