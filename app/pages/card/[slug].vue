@@ -6,7 +6,7 @@
 import type { Card } from '~~/types/types'
 
 definePageMeta({
-  layout: 'centered'
+  layout: 'list'
 })
 
 const isFaceUp = ref(false)
