@@ -1,5 +1,5 @@
 <template>
-  <section class="card text-center" :class="{ 'open': isOpen, 'close': shouldClose }">
+  <section class="card text-center" :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted }">
     <CardElement :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
       :is-loading="isLoading" :showPlayButton="props.showPlayButton" />
     <Platine v-if="isPlatineInit" ref="platineRef" :card="card" @loaded="onTrackLoaded" @finishPlaying="closePlatine"
@@ -26,6 +26,18 @@ const emit = defineEmits(['open', 'close'])
 
 const isPlatineInit = ref(false)
 const isOpen = ref(false)
+
+// animation on mount so all Card instances animate when inserted
+const isMounted = ref(false)
+
+onMounted(() => {
+  // trigger enter animation on client
+  isMounted.value = true
+  // remove the flag after the animation duration
+  setTimeout(() => {
+    isMounted.value = false
+  }, 700)
+})
 
 const localIsFaceUp = ref(props.isFaceUp ?? false)
 
@@ -117,6 +129,22 @@ watch(() => props.autoplay, (autoplay) => {
 $open-speed: 0.7s;
 
 .card {
+  &.card-enter {
+    animation: scale-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  @keyframes scale-in {
+    from {
+      transform: scale(0);
+      opacity: 0;
+    }
+
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
   aspect-ratio: 7/10;
   position: relative;
   max-height: 100vmin;
