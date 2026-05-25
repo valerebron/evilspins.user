@@ -26,7 +26,26 @@ const emit = defineEmits(['open', 'close'])
 
 const isPlatineInit = ref(false)
 const isOpen = ref(false)
-const isFaceUp = computed(() => props.isFaceUp ?? false)
+
+const localIsFaceUp = ref(props.isFaceUp ?? false)
+
+watch(
+  () => props.isFaceUp,
+  (value) => {
+    if (value !== undefined) {
+      localIsFaceUp.value = value
+    }
+  },
+  { immediate: true }
+)
+
+const isFaceUp = computed({
+  get: () => localIsFaceUp.value,
+  set: (value) => {
+    localIsFaceUp.value = value
+  }
+})
+
 const isLoading = ref(false)
 
 const platineRef = useTemplateRef('platineRef')

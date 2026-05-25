@@ -3,8 +3,6 @@
 </template>
 
 <script setup lang="ts">
-import type { Card } from '~~/types/types'
-
 definePageMeta({
   layout: 'list'
 })
