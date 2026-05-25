@@ -1,7 +1,7 @@
 <template>
   <section class="card text-center" :class="{ 'open': isOpen, 'close': shouldClose }">
     <CardElement :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
-      :is-loading="isLoading" :showPlayButtonFaceUp="props.showPlayButtonFaceUp" />
+      :is-loading="isLoading" :showPlayButton="props.showPlayButton" />
     <Platine v-if="isPlatineInit" ref="platineRef" :card="card" @loaded="onTrackLoaded" @finishPlaying="closePlatine"
       v-show="isOpen" />
     <Button v-if="isOpen" @click="closePlatine" key-alias="Escape" class="absolute top-0 right-0"></Button>
@@ -17,7 +17,7 @@ const props = defineProps<{
   card: Card,
   isFaceUp?: boolean,
   isRandom?: boolean,
-  showPlayButtonFaceUp?: boolean,
+  showPlayButton?: boolean,
   navigateOnClick?: boolean,
   autoplay?: boolean
 }>()
@@ -26,7 +26,7 @@ const emit = defineEmits(['open', 'close'])
 
 const isPlatineInit = ref(false)
 const isOpen = ref(false)
-const isFaceUp = ref(props.isFaceUp ?? false) // marche pour les cartes random
+const isFaceUp = computed(() => props.isFaceUp ?? false)
 const isLoading = ref(false)
 
 const platineRef = useTemplateRef('platineRef')

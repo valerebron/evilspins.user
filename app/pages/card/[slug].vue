@@ -1,5 +1,5 @@
 <template>
-  <Card :card :is-face-up="isFaceUp" :autoplay="true" />
+  <Card :card :is-face-up="isFaceUp" :autoplay="false" :showPlayButton="true" />
 </template>
 
 <script setup lang="ts">
