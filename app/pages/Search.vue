@@ -51,13 +51,60 @@
 import type { Card } from '~~/types/types'
 import type { Suit, Rank } from '~~/types/types'
 
-const { data: response, pending } = await useFetch<{ data: Card[] }>('/api/card')
-const cards = computed(() => response.value?.data || [])
+const cards = ref<Card[]>([])
+const pending = ref(false)
+const error = ref<Error | null>(null)
 
 const searchQuery = ref('')
 const selectedSuit = ref<Suit | ''>('')
 const selectedRank = ref<Rank | ''>('')
 const selectedYear = ref<number | ''>('')
+
+const activeFilters = computed(() => {
+  const params: Record<string, string> = {}
+  if (searchQuery.value.trim()) {
+    params.search = searchQuery.value.trim()
+  }
+  if (selectedSuit.value) {
+    params.suit = selectedSuit.value
+  }
+  if (selectedRank.value) {
+    params.rank = selectedRank.value
+  }
+  if (selectedYear.value !== '') {
+    params.year = String(selectedYear.value)
+  }
+  return params
+})
+
+const hasActiveFilter = computed(() => Object.keys(activeFilters.value).length > 0)
+
+watch(
+  activeFilters,
+  async (params) => {
+    if (!hasActiveFilter.value) {
+      cards.value = []
+      return
+    }
+
+    pending.value = true
+    error.value = null
+
+    try {
+      const response = await $fetch<{ data: Card[] }>('/api/card', {
+        params,
+      })
+
+      cards.value = response.data || []
+    } catch (err) {
+      error.value = err as Error
+      cards.value = []
+    } finally {
+      pending.value = false
+    }
+  },
+  { immediate: true, deep: true },
+)
 
 const suits: Suit[] = ['♠', '♣', '♦', '♥']
 const ranks: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R']
