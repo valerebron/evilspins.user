@@ -52,6 +52,7 @@ const clickOnCard = () => {
   // Close other cards immediately on click
   openCard(cardId.value)
 
+
   if (!isPlatineInit.value) {
     isPlatineInit.value = true
     isLoading.value = true
@@ -70,9 +71,7 @@ const onTrackLoaded = async () => {
   const artist = props.card.artist ?? (props.card as any).name ?? 'Unknown Artist'
   document.title = `${artist} - ${props.card.title}`
   // Modifier l'URL seulement si ce n'est pas une carte aléatoire
-  if (!props.isRandom) {
-    window.history.pushState({}, '', `/card/${props.card.slug}`)
-  }
+  window.history.pushState({}, '', `/card/${props.card.slug}`)
   isLoading.value = false
   await timeout(500)
   platineRef.value?.play()
@@ -82,6 +81,7 @@ const closePlatine = () => {
   isOpen.value = false
   isPlatineInit.value = false
   closeCard(cardId.value)
+  window.history.back();
   emit('close')
 }
 
