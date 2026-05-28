@@ -1,5 +1,5 @@
 <template>
-  <Card v-if="card" :card="card" :is-face-up="isFaceUp" :autoplay="autoplay" />
+  <Card v-if="card" :card="card" :is-face-up="isFaceUp" :autoplay="autoplay" class="slug" />
 </template>
 
 <script setup lang="ts">
@@ -25,3 +25,13 @@ onMounted(() => {
   }, 700)
 })
 </script>
+
+<style lang="scss">
+.slug .card-element .face-up .play-button {
+  opacity: 1;
+}
+
+.slug .card-element .face-up:hover .play-button {
+  transform: scale(1.2);
+}
+</style>
