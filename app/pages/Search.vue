@@ -1,7 +1,7 @@
 <template>
   <div class="search-container">
     <div class="search-bar">
-      <input v-model="searchQuery" type="text" placeholder="Rechercher par titre ou artiste..." class="search-input" />
+      <input ref="searchInput" v-model="searchQuery" type="text" placeholder="Rechercher par titre ou artiste..." class="search-input" />
     </div>
 
     <div class="filters">
@@ -48,6 +48,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref, nextTick } from 'vue'
 import type { Card } from '~~/types/types'
 import type { Suit, Rank } from '~~/types/types'
 
@@ -59,6 +60,12 @@ const searchQuery = ref('')
 const selectedSuit = ref<Suit | ''>('')
 const selectedRank = ref<Rank | ''>('')
 const selectedYear = ref<number | ''>('')
+const searchInput = ref<HTMLInputElement | null>(null)
+
+onMounted(async () => {
+  await nextTick()
+  searchInput.value?.focus()
+})
 
 const activeFilters = computed(() => {
   const params: Record<string, string> = {}
