@@ -16,7 +16,6 @@ import CardElement from './CardElement.vue';
 const props = defineProps<{
   card: Card,
   isFaceUp?: boolean,
-  isRandom?: boolean,
   navigateOnClick?: boolean,
   autoplay?: boolean
 }>()

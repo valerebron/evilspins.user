@@ -1,5 +1,5 @@
 <template>
-  <Card v-if="card" :key="card?.slug" :card="card" :isRandom="true" />
+  <Card v-if="card" :key="card?.slug" :card="card" />
 </template>
 
 <script setup lang="ts">
