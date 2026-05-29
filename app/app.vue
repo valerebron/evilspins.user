@@ -25,7 +25,7 @@ const resetFocus = (event: KeyboardEvent) => {
 }
 
 const handleSearchShortcut = (event: KeyboardEvent) => {
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault()
     router.push('/search')
   }
