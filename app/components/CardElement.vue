@@ -181,6 +181,10 @@ const cardColor = computed(() => getYearColor(props.card.year || 0))
 
   .play-button {
     @apply absolute opacity-0 hover:opacity-100;
+
+    .show-play-button & {
+      @apply opacity-100;
+    }
   }
 
   .cover-image:active,

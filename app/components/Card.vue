@@ -1,5 +1,6 @@
 <template>
-  <section class="card text-center" :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted }">
+  <section class="card text-center"
+    :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted, 'show-play-button': showPlayButton }">
     <CardElement :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
       :is-loading="isLoading" />
     <Platine v-if="isPlatineInit" ref="platineRef" :card="card" @loaded="onTrackLoaded" @finishPlaying="closePlatine"
@@ -11,13 +12,14 @@
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
 import { timeout } from '~/utils/timeout'
-import CardElement from './CardElement.vue';
+import CardElement from './CardElement.vue'
 
 const props = defineProps<{
   card: Card,
   isFaceUp?: boolean,
   navigateOnClick?: boolean,
-  autoplay?: boolean
+  autoplay?: boolean,
+  showPlayButton?: boolean,
 }>()
 
 const emit = defineEmits(['open', 'close'])
@@ -55,6 +57,16 @@ const isFaceUp = computed({
 })
 
 const isLoading = ref(false)
+const isTouch = useIsTouchInterface()
+
+const showPlayButton = computed(() => {
+  if (isTouch.value) {
+    return isTouch.value
+  }
+  else if (props.showPlayButton !== undefined) {
+    return props.showPlayButton
+  }
+})
 
 const platineRef = useTemplateRef('platineRef')
 const { openCard, closeCard, isCardOpen, openCardId } = useCardOpenState()

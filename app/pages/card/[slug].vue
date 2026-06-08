@@ -1,5 +1,5 @@
 <template>
-  <Card v-if="card" :card="card" :is-face-up="isFaceUp" :autoplay="autoplay" class="slug" />
+  <Card v-if="card" :card="card" :is-face-up="isFaceUp" :autoplay="autoplay" :show-play-button="showPlayButton" />
 </template>
 
 <script setup lang="ts">
@@ -8,6 +8,7 @@ definePageMeta({
 })
 
 const isFaceUp = ref(false)
+const showPlayButton = ref(false)
 const route = useRoute()
 const slug = route.params.slug as string
 const autoplay = computed(() => route.query.autoplay === 'true')
@@ -22,16 +23,9 @@ useHead({
 onMounted(() => {
   setTimeout(() => {
     isFaceUp.value = true
+    setTimeout(() => {
+      showPlayButton.value = true
+    }, 100)
   }, 700)
 })
 </script>
-
-<style lang="scss">
-.slug .card-element .face-up .play-button {
-  opacity: 1;
-}
-
-.slug .card-element .face-up:hover .play-button {
-  transform: scale(1.2);
-}
-</style>
