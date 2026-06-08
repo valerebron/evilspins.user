@@ -20,10 +20,10 @@ provide('openCardId', openCardId)
 .card-list {
   display: flex;
   flex-wrap: nowrap;
-  flex-direction: row;
+  flex-direction: column;
   overflow-x: auto;
 
-  @screen md {
+  @screen sm {
     flex-wrap: wrap;
     flex-direction: row;
     overflow-x: visible;
@@ -37,8 +37,12 @@ provide('openCardId', openCardId)
 }
 
 .card {
-  width: 250px;
   transition: width height opacity 0.7s;
+  width: 20vh;
+
+  @screen sm {
+    width: 33vh;
+  }
 
   &.open {
     width: 100%;
