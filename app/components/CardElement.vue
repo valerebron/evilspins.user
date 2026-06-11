@@ -14,8 +14,11 @@
         <!-- Cover -->
         <figure class="cover">
           <PlayButton :is-loading="isLoading" />
-          <UnLazyImage :src="props.card.url_image" alt="card cover" loading="lazy" :blurhash="props.card.blurhash"
+          <img v-if="props.card.url_image?.startsWith('blob:')" :src="props.card.url_image" alt="card cover"
             class="cover-image w-full h-full object-cover object-center" draggable="false" />
+          <UnLazyImage v-else :src="props.card.url_image" alt="card cover" loading="lazy"
+            :blurhash="props.card.blurhash" class="cover-image w-full h-full object-cover object-center"
+            draggable="false" />
         </figure>
 
         <!-- Body -->

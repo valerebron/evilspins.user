@@ -4,7 +4,9 @@ const isProd = process.env.NODE_ENV === 'production'
 
 export default defineNuxtConfig({
   runtimeConfig: {
-    dataUrl: '',
+    public: {
+      dataUrl: process.env.DATA_URL || '',
+    },
   },
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },

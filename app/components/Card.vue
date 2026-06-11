@@ -139,17 +139,34 @@ $open-speed: 0.7s;
 .card {
   &.card-enter {
     animation: scale-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    // animation: card-slide-in 600ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   @keyframes scale-in {
     from {
-      transform: scale(0);
+      transform: scale(0.7);
       opacity: 0;
     }
 
     to {
       transform: scale(1);
       opacity: 1;
+    }
+  }
+
+  @keyframes card-slide-in {
+    0% {
+      transform: translateY(50px) scale(0.95);
+      opacity: 0;
+    }
+
+    60% {
+      transform: translateY(-6px) scale(1.02);
+      opacity: 1;
+    }
+
+    100% {
+      transform: translateY(0) scale(1);
     }
   }
 
