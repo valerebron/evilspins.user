@@ -3,8 +3,9 @@
     :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted, 'show-play-button': showPlayButton }">
     <CardElement :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
       :is-loading="isLoading" />
-    <Platine v-if="isPlatineInit" ref="platineRef" :card="card" @loaded="onTrackLoaded" @finishPlaying="closePlatine"
-      v-show="isOpen" />
+    <Platine v-if="isPlatineMounted" ref="platineRef" :card="card" :active="isOpen"
+      :class="{ 'fading-out': isPlatineFading }" @loaded="onTrackLoaded" @finishPlaying="closePlatine"
+      v-show="isOpen || isPlatineFading" />
     <Button v-if="isOpen" @click="closePlatine" key-alias="Escape" class="absolute top-0 right-0"></Button>
   </section>
 </template>
@@ -24,17 +25,18 @@ const props = defineProps<{
 
 const emit = defineEmits(['open', 'close'])
 
-const isPlatineInit = ref(false)
+const isPlatineMounted = ref(false)
 const isOpen = ref(false)
+const isPlatineFading = ref(false) // for fade-out matching the audio deceleration on close
 
 // animation on mount so all Card instances animate when inserted
 const isMounted = ref(true)
 
 onMounted(() => {
-  // keep the enter animation class for the first render
+  // Doit rester synchronisé avec $card-mount-speed dans le SCSS (+ un petit buffer)
   setTimeout(() => {
     isMounted.value = false
-  }, 700)
+  }, 550)
 })
 
 const localIsFaceUp = ref(props.isFaceUp ?? false)
@@ -71,6 +73,12 @@ const showPlayButton = computed(() => {
 const platineRef = useTemplateRef('platineRef')
 const { openCard, closeCard, isCardOpen, openCardId } = useCardOpenState()
 
+// Durées pour l'orchestration des animations entre cartes.
+// - CARD_TRANSITION_DURATION : durée complète de la transition visuelle (shrink cadre + platine fade) + marge décélération audio.
+// - CARD_OTHERS_CLOSE_DELAY  : délai utilisé lors de l'ouverture pour s'assurer que les autres cartes ont entièrement disparu.
+const CARD_TRANSITION_DURATION = 1050
+const CARD_OTHERS_CLOSE_DELAY = CARD_TRANSITION_DURATION
+
 const cardId = computed(() => props.card.slug)
 
 const shouldClose = computed(() => {
@@ -82,64 +90,147 @@ const shouldClose = computed(() => {
   return openCardId.value !== cardId.value
 })
 
+// Quand une autre carte devient active (via le state global), on met en pause
+// celle-ci pour éviter que l'audio continue en arrière-plan.
+watch(shouldClose, (should) => {
+  if (should && isOpen.value) {
+    platineRef.value?.pause?.()
+    isOpen.value = false
+  }
+})
+
 const clickOnCard = () => {
   if (props.navigateOnClick) {
     navigateTo(`/card/${props.card.slug}?autoplay=true`)
     return
   }
 
-  // Close other cards immediately on click
+  // On signale globalement qu'on choisit cette carte.
+  // Ça va immédiatement faire shouldClose=true sur les autres → elles commencent leur animation de disparition.
   openCard(cardId.value)
 
-
-  if (!isPlatineInit.value) {
-    isPlatineInit.value = true
+  if (!isPlatineMounted.value) {
+    // Nouvelle carte : on la monte. L'ouverture visuelle sera retardée dans onTrackLoaded
+    // pour laisser les autres cartes disparaître d'abord.
+    isPlatineMounted.value = true
     isLoading.value = true
   } else {
-    isOpen.value = true
-    platineRef.value?.play()
-    emit('open')
+    // Carte déjà montée : on attend un petit délai (CARD_OTHERS_CLOSE_DELAY)
+    // avant de lancer notre propre animation d'ouverture.
+    setTimeout(() => {
+      isOpen.value = true
+      platineRef.value?.play?.(0)
+      emit('open')
+    }, CARD_OTHERS_CLOSE_DELAY)
   }
 }
 
 const onTrackLoaded = async () => {
   isFaceUp.value = true
-  await timeout(700)
+
+  // On laisse un peu de temps pour l'animation face-up,
+  // puis on attend explicitement que les autres cartes aient commencé leur disparition
+  // avant de lancer l'ouverture visuelle de cette carte.
+  await timeout(350)
+  await timeout(CARD_OTHERS_CLOSE_DELAY)
+
   isOpen.value = true
   emit('open')
+
   const artist = props.card.artist ?? (props.card as any).name ?? 'Unknown Artist'
   document.title = `${artist} - ${props.card.title}`
-  // Modifier l'URL seulement si ce n'est pas une carte aléatoire
   window.history.pushState({}, '', `/card/${props.card.slug}`)
   isLoading.value = false
-  await timeout(500)
+
+  // On lance le play (accélération) pendant que l'animation d'ouverture de la carte tourne.
+  await timeout(250)
   platineRef.value?.play()
 }
 
 const closePlatine = () => {
+  // On lance la décélération audio immédiatement.
+  platineRef.value?.pause?.()
+
+  // On démarre la fermeture visuelle de la carte ouverte (retrait du .open + fade-out de la platine).
+  // IMPORTANT : on ne fait PAS closeCard() tout de suite.
+  // Cela permet de garder openCardId défini pendant toute la durée de la transition de fermeture,
+  // afin que les autres cartes conservent leur état .close (et donc restent masquées)
+  // jusqu'à ce que la carte actuelle ait complètement terminé sa fermeture.
+  isPlatineFading.value = true
   isOpen.value = false
-  isPlatineInit.value = false
-  closeCard(cardId.value)
-  window.history.back();
-  emit('close')
+
+  // On effectue le nettoyage (clear du state global, history, emit) seulement une fois
+  // la durée complète de la transition de fermeture écoulée.
+  // C'est à ce moment-là seulement que les autres cartes vont ré-apparaître.
+  setTimeout(() => {
+    isPlatineFading.value = false
+    closeCard(cardId.value)
+    window.history.back()
+    emit('close')
+  }, CARD_TRANSITION_DURATION)
 }
+
+// === Gestion Space (play/pause) au clavier ===
+// On gère le Space UNIQUEMENT sur la carte actuellement ouverte.
+// Ça évite que plusieurs Platine (toujours montées) réagissent en même temps.
+let spaceHandler: ((e: KeyboardEvent) => void) | null = null
+
+const setupSpaceListener = () => {
+  cleanupSpaceListener()
+  spaceHandler = (e: KeyboardEvent) => {
+    if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
+      e.preventDefault()
+      platineRef.value?.togglePlay?.()
+    }
+  }
+  window.addEventListener('keydown', spaceHandler)
+}
+
+const cleanupSpaceListener = () => {
+  if (spaceHandler) {
+    window.removeEventListener('keydown', spaceHandler)
+    spaceHandler = null
+  }
+}
+
+watch(isOpen, (open) => {
+  if (open) {
+    // Quand cette carte devient active, on prend le contrôle du Space
+    setupSpaceListener()
+  } else {
+    cleanupSpaceListener()
+  }
+}, { immediate: true })
+
+// Nettoyage quand le composant Card lui-même est détruit
+// (très rare maintenant mais c'est une bonne pratique)
+onUnmounted(() => {
+  cleanupSpaceListener()
+})
 
 // Auto-play logic when autoplay prop is true
 watch(() => props.autoplay, (autoplay) => {
-  if (autoplay && !isPlatineInit.value) {
-    isPlatineInit.value = true
+  if (autoplay && !isPlatineMounted.value) {
+    isPlatineMounted.value = true
     isLoading.value = true
   }
 }, { immediate: true })
 </script>
 
 <style scoped lang="scss">
-$open-speed: 0.7s;
+/* === VITESSES D'ANIMATION RÉGLABLES === */
+// 1. Vitesse d'ouverture / fermeture des cartes
+//    (changement de cadre, scale du disque, transition vers la platine)
+$card-transition-speed: 1.2s;
+
+// 2. Vitesse d'apparition et de disparition des cartes
+//    (animation d'entrée quand les cartes arrivent dans le DOM)
+//    → Doit être plus rapide que la transition ci-dessus
+$card-mount-speed: 0.2s;
 
 .card {
   &.card-enter {
-    animation: scale-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    // animation: card-slide-in 600ms cubic-bezier(0.22, 1, 0.36, 1);
+    animation: scale-in $card-mount-speed cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
 
   @keyframes scale-in {
@@ -174,18 +265,18 @@ $open-speed: 0.7s;
   position: relative;
   max-height: 100vmin;
   max-width: 100vmin;
-  transition: all $open-speed;
+  transition: all $card-transition-speed cubic-bezier(0.4, 0, 0.2, 1);
 
   &.open {
     aspect-ratio: 10/10;
-    transition: all $open-speed;
+    transition: all $card-transition-speed cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .card-element,
   .platine {
     height: 100%;
     width: 100%;
-    transition: max-width $open-speed, max-height $open-speed, transform 0.1s;
+    transition: all $card-transition-speed cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   :deep(.card-element) {
@@ -197,7 +288,7 @@ $open-speed: 0.7s;
 
     .face-up,
     .cover {
-      transition: border-radius $open-speed, box-shadow $open-speed;
+      transition: all $card-transition-speed cubic-bezier(0.4, 0, 0.2, 1);
 
       &:active {
         .play-button {
@@ -234,5 +325,12 @@ $open-speed: 0.7s;
       }
     }
   }
+}
+
+// Fade out de la platine (quand on ferme la carte)
+.platine.fading-out {
+  opacity: 0;
+  transition: opacity $card-transition-speed ease-out;
+  pointer-events: none;
 }
 </style>

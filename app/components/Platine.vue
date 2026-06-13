@@ -41,8 +41,11 @@ import Sampler from '~/utils/platine/sampler'
 
 const props = withDefaults(defineProps<{
   card?: Card;
+  /** Indique si cette platine est la carte actuellement ouverte/visible */
+  active?: boolean;
 }>(), {
   card: undefined,
+  active: true,
 })
 
 const emit = defineEmits(['loaded', 'finishPlaying'])
@@ -151,6 +154,14 @@ const loadAudio = async (card: Card) => {
 const play = (position = 0) => {
   isFirstPlay.value = false
   if (!disc.value || !sampler.value || !props.card) return
+
+  // Quand on force un replay depuis le début (position 0), on réinitialise aussi le visuel du disque
+  if (position === 0) {
+    disc.value.setAngle(0)
+    isEndOfTrack.value = false
+    currentTurns.value = 0
+    progressPercentage.value = 17 // valeur minimale définie dans updateTurns
+  }
 
   sampler.value.play(position, true)
   disc.value.powerOnWithAcceleration()
@@ -390,10 +401,11 @@ const PrevFourSec = () => {
 }
 
 const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
-    e.preventDefault() // Empêcher le défilement de la page
-    togglePlay()
-  } else if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
+  // Plus de gestion du Space ici (voir Card.vue).
+  // On ne gère plus que les flèches, et seulement si cette platine est active.
+  if (!props.active) return
+
+  if (e.code === 'ArrowRight' || e.key === 'ArrowRight') {
     e.preventDefault()
     NextFourSec()
   } else if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') {
@@ -410,10 +422,12 @@ onMounted(async () => {
     await loadAudio(props.card!)
   }
 
+  // On attache le listener une seule fois au montage.
+  // La vraie protection est le guard "if (!props.active)" en haut de handleKeyDown.
   window.addEventListener('keydown', handleKeyDown)
 })
 
-// Nettoyage de l'écouteur d'événement
+// Nettoyage (seulement si le composant est vraiment démonté plus tard)
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
   isMounted.value = false
