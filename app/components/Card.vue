@@ -165,7 +165,6 @@ const closePlatine = () => {
   setTimeout(() => {
     isPlatineFading.value = false
     closeCard(cardId.value)
-    window.history.back()
     emit('close')
   }, CARD_TRANSITION_DURATION)
 }
