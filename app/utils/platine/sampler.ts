@@ -114,15 +114,20 @@ class Sampler {
       return
     }
 
+    // Protection anti "mal aux oreilles" : on bride les vitesses extrêmes
+    // (le clamp côté Disc est la vraie limite, mais on met une sécurité ici aussi)
+    const MAX_RATE = 3.5
+    const clampedSpeed = Math.max(-MAX_RATE, Math.min(MAX_RATE, speed))
+
     // Mettre à jour la vitesse actuelle
-    this.currentSpeed = speed
+    this.currentSpeed = clampedSpeed
 
     if (isReversed !== this.isReversed) {
       this.changeDirection(isReversed, secondsPlayed)
     }
 
     const { currentTime } = this.audioContext
-    const speedAbsolute = Math.abs(speed)
+    const speedAbsolute = Math.abs(clampedSpeed)
 
     this.audioSource.playbackRate.cancelScheduledValues(currentTime)
     this.audioSource.playbackRate.linearRampToValueAtTime(
@@ -206,15 +211,19 @@ class Sampler {
   setPlaybackRate(rate: number) {
     if (!this.audioSource) return
 
+    // Protection supplémentaire contre les vitesses qui font mal aux oreilles
+    const MAX_RATE = 3.5
+    const clampedRate = Math.max(-MAX_RATE, Math.min(MAX_RATE, rate))
+
     const currentTime = this.audioContext.currentTime
     this.audioSource.playbackRate.cancelScheduledValues(currentTime)
     this.audioSource.playbackRate.linearRampToValueAtTime(
-      Math.max(0.001, Math.abs(rate)), // Éviter les valeurs négatives ou nulles
-      currentTime + 0.05 // Petit délai pour éviter les clics
+      Math.max(0.001, Math.abs(clampedRate)),
+      currentTime + 0.05
     )
 
     // Mettre à jour la vitesse actuelle
-    this.currentSpeed = rate
+    this.currentSpeed = clampedRate
   }
 }
 

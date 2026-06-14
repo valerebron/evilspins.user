@@ -22,10 +22,10 @@
         height: progressPercentage + '%',
         width: progressPercentage + '%'
       }"></div>
-      <button @touchend="isPowerActive = false; Power()" @touchcancel="isPowerActive = false" :class="{ isPowerActive }"
-        class="power-button" @click="Power" @touchstart.passive="isPowerActive = true" :disabled="isLoadingTrack">
+      <button class="power-button" :class="{ isPowerActive }" @click="Power" @touchstart.passive="isPowerActive = true"
+        @touchend="isPowerActive = false" @touchcancel="isPowerActive = false" :disabled="isLoadingTrack">
         <img class="macaron" src="/favicon.svg" v-if="!isEndOfTrack">
-        <img class="macaron" @click="Rewind" src="/rewind.svg" v-if="isEndOfTrack" />
+        <img class="macaron" @click.stop="Rewind" src="/rewind.svg" v-if="isEndOfTrack" />
       </button>
       <div class="turn-point" v-if="!isLoadingTrack">
       </div>
@@ -197,9 +197,10 @@ const cleanup = () => {
   }
 }
 
-const Power = (e: MouseEvent) => {
+const Power = () => {
   if (isEndOfTrack.value) {
     Rewind()
+    return
   }
   togglePlay()
 }

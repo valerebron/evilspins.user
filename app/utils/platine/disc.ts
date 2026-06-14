@@ -77,10 +77,14 @@ class Disc {
   private _inertiaFriction: number = 1 // Coefficient de frottement pour l'inertie (plus proche de 1 = plus long)
   private _lastDragVelocity: number = 0 // Dernière vitesse de drag
   private _lastDragTime: number = 0 // Dernier temps de drag
-  private _inertiaAmplification: number = 25 // Facteur d'amplification de l'inertie
+  private _inertiaAmplification: number = 12 // Facteur d'amplification de l'inertie (baissé pour éviter les flings trop violents)
   private _previousDuration: number = 0 // Pour suivre les changements de durée
   private _accelerationRafId: number | null = null // ID de l'animation d'accélération
   private _decelerationRafId: number | null = null // ID de l'animation de décélération
+
+  // ID du pointeur actuellement utilisé pour le drag/scratch (pour supporter correctement
+  // Pointer Events unifiés + multi-touch éventuel)
+  private _activePointerId: number | null = null
 
   public isReversed: boolean = false
 
@@ -99,29 +103,28 @@ class Disc {
 
     this.previousTimestamp = performance.now()
 
-    this.onDragStart = this.onDragStart.bind(this)
-    this.onDragProgress = this.onDragProgress.bind(this)
-    this.onDragEnd = this.onDragEnd.bind(this)
+    this.handlePointerDown = this.handlePointerDown.bind(this)
+    this.handlePointerMove = this.handlePointerMove.bind(this)
+    this.handlePointerUp = this.handlePointerUp.bind(this)
     this.loop = this.loop.bind(this)
 
     this.init()
   }
 
   init() {
-    // Ajout du style pour désactiver le comportement tactile par défaut
+    // Empêche le défilement et le geste de zoom pendant l'interaction avec le disque.
     this.el.style.touchAction = 'none'
 
-    // Écouteurs pour la souris et le tactile
-    this.el.addEventListener('pointerdown', this.onDragStart)
-    this.el.addEventListener(
-      'touchstart',
-      (e) => {
-        // Empêcher le défilement de la page
-        e.preventDefault()
-        this.onDragStart(e)
-      },
-      { passive: false }
-    )
+    // On utilise uniquement Pointer Events (unifié souris/tactile/stylet).
+    // Pattern robuste pour drag :
+    // - pointerdown sur l'élément seulement (pour filtrer + démarrer le scratch)
+    // - pointermove/up/cancel une seule fois sur document.
+    // Les handlers filtrent via _activePointerId pour savoir si on est en train de dragger.
+    this.el.addEventListener('pointerdown', this.handlePointerDown, { passive: false })
+
+    document.addEventListener('pointermove', this.handlePointerMove, { passive: false })
+    document.addEventListener('pointerup', this.handlePointerUp)
+    document.addEventListener('pointercancel', this.handlePointerUp)
   }
 
   get playbackSpeed() {
@@ -132,8 +135,14 @@ class Disc {
     this._draggingSpeeds.push(s)
     this._draggingSpeeds = limit(this._draggingSpeeds, 10)
 
-    this._playbackSpeed = average(this._draggingSpeeds)
-    // this._playbackSpeed = clamp(this._playbackSpeed, -4, 4)
+    let avg = average(this._draggingSpeeds)
+
+    // Limite raisonnable pour éviter de faire mal aux oreilles en scratch extrême.
+    // Au-delà de ~3.5 ça devient très aigu / fatiguant, surtout en négatif (reverse).
+    const MAX_SCRATCH_SPEED = 3.5
+    avg = clamp(avg, -MAX_SCRATCH_SPEED, MAX_SCRATCH_SPEED)
+
+    this._playbackSpeed = avg
   }
 
   get secondsPlayed() {
@@ -169,6 +178,10 @@ class Disc {
       cancelAnimationFrame(this._decelerationRafId)
       this._decelerationRafId = null
     }
+
+    // Coupe toute inertie résiduelle (voir commentaire dans powerOn)
+    this._isInertiaActive = false
+    this._inertiaVelocity = 0
 
     this._isPoweredOn = true
     const targetSpeed = this.isReversed ? -1 : 1
@@ -206,6 +219,11 @@ class Disc {
       this.powerOffWithDeceleration()
       return
     }
+
+    // Coupe toute inertie résiduelle
+    this._isInertiaActive = false
+    this._inertiaVelocity = 0
+
     this._isPoweredOn = false
     this._basePlaybackSpeed = 0
   }
@@ -216,6 +234,10 @@ class Disc {
       cancelAnimationFrame(this._accelerationRafId)
       this._accelerationRafId = null
     }
+
+    // Coupe toute inertie résiduelle d'un scratch (sinon le slide reste "freiné" après pause)
+    this._isInertiaActive = false
+    this._inertiaVelocity = 0
 
     const startTime = performance.now()
     const startSpeed = this._basePlaybackSpeed
@@ -248,80 +270,45 @@ class Disc {
     this._maxAngle = duration * RPS * TAU
   }
 
-  onDragStart(e: PointerEvent | TouchEvent) {
-    // Vérifier si l'événement provient d'un élément avec la classe 'power-button' ou 'power-logo'
+  /**
+   * Gestion unifiée Pointer Events (souris + tactile).
+   * Les listeners move/up sont toujours sur document (mis une seule fo is dans init).
+   * On utilise _activePointerId pour savoir quand on est vraiment en train de dragger.
+   */
+  handlePointerDown(e: PointerEvent) {
+    // Ignorer si l'utilisateur appuie sur le bouton power au centre
     const target = e.target as HTMLElement
     if (target.closest('.power-button, .power-logo')) {
-      // Ne rien faire si l'événement provient du bouton power
-      e.preventDefault()
-      e.stopPropagation()
       return
     }
 
-    // Empêcher le comportement par défaut pour éviter le défilement
+    // Déjà en train de dragger avec un autre pointeur ?
+    if (this._activePointerId !== null) {
+      return
+    }
+
+    // Active pointer capture : les événements continuent d'arriver même si le contact
+    // sort de la surface du disque (très utile en tactile).
+    try {
+      this.el.setPointerCapture(e.pointerId)
+    } catch {}
+
+    this._activePointerId = e.pointerId
+    this._lastDragTime = performance.now()
+    this._lastDragVelocity = 0
+
     e.preventDefault()
 
-    // Appeler le callback onDragStart
     this.callbacks.onDragStart()
 
-    // Obtenir les coordonnées du toucher ou de la souris
-    const getCoords = (event: PointerEvent | TouchEvent): { x: number; y: number } => {
-      // Gestion des événements tactiles
-      const touchEvent = event as TouchEvent
-      if (touchEvent.touches?.[0]) {
-        return {
-          x: touchEvent.touches[0].clientX,
-          y: touchEvent.touches[0].clientY
-        }
-      }
-
-      // Gestion des événements de souris
-      const mouseEvent = event as PointerEvent
-      return {
-        x: mouseEvent.clientX ?? this._center.x,
-        y: mouseEvent.clientY ?? this._center.y
-      }
-    }
-
-    const startCoords = getCoords(e)
-
-    const onMove = (moveEvent: Event) => {
-      if (!(moveEvent instanceof PointerEvent) && !(moveEvent instanceof TouchEvent)) return
-
-      const coords = getCoords(moveEvent)
-
-      this.onDragProgress({
-        clientX: coords.x,
-        clientY: coords.y,
-        preventDefault: () => moveEvent.preventDefault(),
-        stopPropagation: () => moveEvent.stopPropagation()
-      } as MouseEvent)
-    }
-
-    const onEnd = () => {
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('touchmove', onMove)
-      document.removeEventListener('pointerup', onEnd)
-      document.removeEventListener('touchend', onEnd)
-      this.onDragEnd()
-    }
-
-    document.addEventListener('pointermove', onMove)
-    document.addEventListener('touchmove', onMove, { passive: false })
-    document.addEventListener('pointerup', onEnd)
-    document.addEventListener('touchend', onEnd)
-
     this._center = getElementCenter(this.el)
-    this._draggingFrom = startCoords
+    this._draggingFrom = { x: e.clientX, y: e.clientY }
     this.isDragging = true
   }
 
-  onDragProgress(e: {
-    clientX: number
-    clientY: number
-    preventDefault: () => void
-    stopPropagation: () => void
-  }) {
+  handlePointerMove(e: PointerEvent) {
+    if (e.pointerId !== this._activePointerId) return
+
     const currentTime = performance.now()
     const deltaTime = currentTime - this._lastDragTime
 
@@ -334,40 +321,39 @@ class Disc {
     const angle_DraggingFromToCenter = angleBetween(this._center, this._draggingFrom)
     let angleDragged = angleDifference(angle_DraggingFromToCenter, anglePointerToCenter)
 
-    // Calcul de la vitesse de déplacement angulaire (radians par milliseconde)
-    // Le signe est inversé pour que le glissement vers la droite fasse tourner vers la droite
     if (deltaTime > 0) {
+      // Signe inversé : glisser vers la droite = faire tourner le disque "vers la droite"
       this._lastDragVelocity = -angleDragged / deltaTime
     }
 
     this._lastDragTime = currentTime
 
-    // Appliquer la rotation au disque
-    // Le signe est inversé pour que le glissement vers la droite fasse tourner vers la droite
     this.setAngle(this._currentAngle - angleDragged)
     this._draggingFrom = { ...pointerPosition }
+
+    // Aide à empêcher le scroll pendant le geste tactile
+    if (e.cancelable) {
+      try { e.preventDefault() } catch {}
+    }
   }
 
-  onDragEnd() {
-    document.body.removeEventListener('pointermove', this.onDragProgress)
-    document.body.removeEventListener('pointerup', this.onDragEnd)
+  handlePointerUp(e: PointerEvent) {
+    if (e.pointerId !== this._activePointerId) return
 
-    // Activer l'inertie avec la vitesse de drag actuelle
+    try {
+      this.el.releasePointerCapture(e.pointerId)
+    } catch {}
+
+    this._activePointerId = null
+    this.isDragging = false
+
+    // Inertie (comportement conservé)
     this._isInertiaActive = true
-
-    // Ajuster la direction de l'inertie en fonction du mode reverse
     const direction = this.isReversed ? -1 : 1
     this._inertiaVelocity = this._lastDragVelocity * this._inertiaAmplification * direction
 
-    this.isDragging = false
-
-    // Ne pas réinitialiser _basePlaybackSpeed si une transition est en cours
-    // pour éviter de casser l'accélération/décélération
     if (this._accelerationRafId === null && this._decelerationRafId === null) {
-      // Toujours conserver la vitesse de base actuelle (1 si allumé, 0 si éteint)
       this._basePlaybackSpeed = this._isPoweredOn ? (this.isReversed ? -1 : 1) : 0
-
-      // Si le lecteur est éteint, s'assurer que la vitesse de base est bien à 0
       if (!this._isPoweredOn) {
         this._basePlaybackSpeed = 0
       }
