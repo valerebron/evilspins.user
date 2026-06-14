@@ -465,7 +465,7 @@ defineExpose({ pause, play, togglePlay, Reverse, Rewind })
     cursor: grab;
     background-position: center;
     background-size: cover;
-    padding: 14px;
+    padding: 6%;
 
     .loading & {
       box-shadow: none;
