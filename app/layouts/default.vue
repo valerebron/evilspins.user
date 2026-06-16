@@ -5,15 +5,17 @@
 </template>
 
 <script setup lang="ts">
+const { openCardId } = useCardOpenState()
 
-const { openCardId, setAllowMultipleOpen } = useCardOpenState()
+useOutsideClick(() => {
+  if (!openCardId.value) return
 
-// Default behavior: only one card can be open at a time
-setAllowMultipleOpen(false)
-
-// Provide the open card ID to child components
-provide('openCardId', openCardId)
-
+  window.dispatchEvent(
+    new CustomEvent('card-close-request')
+  )
+}, {
+  exclude: ['.card']
+})
 </script>
 
 <style lang="scss">

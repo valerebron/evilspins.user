@@ -6,7 +6,6 @@
     <Platine v-if="isPlatineMounted" ref="platineRef" :card="card" :active="isOpen"
       :class="{ 'fading-out': isPlatineFading }" @loaded="onTrackLoaded" @finishPlaying="closePlatine"
       v-show="isOpen || isPlatineFading" />
-    <Button v-if="isOpen" @click="closePlatine" key-alias="Escape" class="absolute top-0 right-0"></Button>
   </section>
 </template>
 
@@ -71,7 +70,8 @@ const showPlayButton = computed(() => {
 })
 
 const platineRef = useTemplateRef('platineRef')
-const { openCard, closeCard, isCardOpen, openCardId } = useCardOpenState()
+
+const { openCard, closeCard, openCardId } = useCardOpenState()
 
 // Durées pour l'orchestration des animations entre cartes.
 // - CARD_TRANSITION_DURATION : durée complète de la transition visuelle (shrink cadre + platine fade) + marge décélération audio.
@@ -82,21 +82,7 @@ const CARD_OTHERS_CLOSE_DELAY = CARD_TRANSITION_DURATION
 const cardId = computed(() => props.card.slug)
 
 const shouldClose = computed(() => {
-  // If this card is open, don't close it
-  if (isOpen.value) return false
-  // If no card is open, don't close this one
-  if (!openCardId.value) return false
-  // If another card is open, close this one
-  return openCardId.value !== cardId.value
-})
-
-// Quand une autre carte devient active (via le state global), on met en pause
-// celle-ci pour éviter que l'audio continue en arrière-plan.
-watch(shouldClose, (should) => {
-  if (should && isOpen.value) {
-    platineRef.value?.pause?.()
-    isOpen.value = false
-  }
+  return openCardId.value !== null && openCardId.value !== cardId.value
 })
 
 const clickOnCard = () => {
@@ -192,6 +178,15 @@ const cleanupSpaceListener = () => {
   }
 }
 
+// Quand une autre carte devient active (via le state global), on met en pause
+// celle-ci pour éviter que l'audio continue en arrière-plan.
+watch(shouldClose, (should) => {
+  if (should && isOpen.value) {
+    platineRef.value?.pause?.()
+    isOpen.value = false
+  }
+})
+
 watch(isOpen, (open) => {
   if (open) {
     // Quand cette carte devient active, on prend le contrôle du Space
@@ -201,12 +196,6 @@ watch(isOpen, (open) => {
   }
 }, { immediate: true })
 
-// Nettoyage quand le composant Card lui-même est détruit
-// (très rare maintenant mais c'est une bonne pratique)
-onUnmounted(() => {
-  cleanupSpaceListener()
-})
-
 // Auto-play logic when autoplay prop is true
 watch(() => props.autoplay, (autoplay) => {
   if (autoplay && !isPlatineMounted.value) {
@@ -214,6 +203,31 @@ watch(() => props.autoplay, (autoplay) => {
     isLoading.value = true
   }
 }, { immediate: true })
+
+watch(openCardId, (id) => {
+  // si aucune carte n’est ouverte → on force fermeture locale
+  if (!id && isOpen.value) {
+    closePlatine()
+    return
+  }
+
+  // si une autre carte s’ouvre
+  if (id && id !== cardId.value && isOpen.value) {
+    closePlatine()
+  }
+})
+
+onMounted(() => {
+  window.addEventListener('card-close-request', closePlatine)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('card-close-request', closePlatine)
+})
+
+onUnmounted(() => {
+  cleanupSpaceListener()
+})
 </script>
 
 <style scoped lang="scss">

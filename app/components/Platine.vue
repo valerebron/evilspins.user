@@ -474,7 +474,7 @@ defineExpose({ pause, play, togglePlay, Reverse, Rewind })
   }
 
   .turn-point {
-    @apply absolute top-1/2 right-8 size-1/12 rounded-full bg-esyellow;
+    @apply absolute top-1/2 right-2 size-1/12 rounded-full bg-esyellow;
   }
 
   .disc.is-scratching {
