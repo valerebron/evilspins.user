@@ -28,6 +28,8 @@ const isPlatineMounted = ref(false)
 const isOpen = ref(false)
 const isPlatineFading = ref(false) // for fade-out matching the audio deceleration on close
 
+let previousUrl: string | null = null // stock l'url avant l'ouverture de la carte pour pouvoir la restaurer à la fermeture
+
 // animation on mount so all Card instances animate when inserted
 const isMounted = ref(true)
 
@@ -91,6 +93,8 @@ const clickOnCard = () => {
     return
   }
 
+  previousUrl = window.location.pathname
+
   // On signale globalement qu'on choisit cette carte.
   // Ça va immédiatement faire shouldClose=true sur les autres → elles commencent leur animation de disparition.
   openCard(cardId.value)
@@ -152,6 +156,12 @@ const closePlatine = () => {
     isPlatineFading.value = false
     closeCard(cardId.value)
     emit('close')
+
+    if (previousUrl) {
+      window.history.pushState({}, '', previousUrl)
+      previousUrl = null
+    }
+
   }, CARD_TRANSITION_DURATION)
 }
 
@@ -219,6 +229,9 @@ watch(openCardId, (id) => {
 
 onMounted(() => {
   window.addEventListener('card-close-request', closePlatine)
+
+  if (props.autoplay) return
+  previousUrl = window.location.pathname
 })
 
 onBeforeUnmount(() => {

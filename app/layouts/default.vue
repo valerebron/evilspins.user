@@ -7,6 +7,8 @@
 <script setup lang="ts">
 const { openCardId } = useCardOpenState()
 
+useGlobalCardShortcuts()
+
 useOutsideClick(() => {
   if (!openCardId.value) return
 
