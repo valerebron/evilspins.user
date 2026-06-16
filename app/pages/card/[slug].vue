@@ -3,10 +3,6 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  layout: 'list'
-})
-
 const isFaceUp = ref(false)
 const showPlayButton = ref(false)
 const route = useRoute()
