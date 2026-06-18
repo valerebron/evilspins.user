@@ -45,7 +45,7 @@
               class="mt-2 w-full rounded-3xl border border-slate-700  px-4 py-3 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-700" />
           </div>
 
-          <div class="grid gap-3 sm:grid-cols-3">
+          <div class="grid gap-3 sm:grid-cols-2">
             <div>
               <label class="block text-sm font-medium text-slate-300" for="selectedDate">Date d'ajout</label>
               <input id="selectedDate" v-model="selectedDate" type="date"
@@ -58,12 +58,7 @@
                 class="mt-2 w-full rounded-3xl border border-slate-700  px-4 py-3 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-700"
                 @change="updateRankSuitFromDate" />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-300" for="selectedYear">Année</label>
-              <input id="selectedYear" v-model="selectedYear" type="number" min="1900" max="2100"
-                class="mt-2 w-full rounded-3xl border border-slate-700  px-4 py-3 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-700"
-                @input="updateYearColorFromYear" />
-            </div>
+
           </div>
 
           <div class="flex justify-center">
@@ -112,7 +107,7 @@ const creationError = ref<string | null>(null)
 const previewSuit = ref<CardSuit>('♠')
 const previewRank = ref<CardRank>('A')
 const previewFaceUp = ref(true)
-const yearColor = ref('')
+const yearColor = computed(() => getYearColor(Number(selectedYear.value)))
 
 // Initialize selectedDate to today's date in YYYY-MM-DD format
 const today = new Date()
@@ -120,7 +115,7 @@ const dateString = today.toISOString().split('T')[0]
 const timeString = today.toTimeString().slice(0, 5)
 const selectedDate = ref(dateString)
 const selectedTime = ref(timeString)
-const selectedYear = ref(String(today.getFullYear()))
+const selectedYear = computed(() => String(new Date(selectedDate.value).getFullYear()))
 
 const updateRankSuitFromDate = async () => {
   try {
@@ -136,14 +131,8 @@ const updateRankSuitFromDate = async () => {
   }
 }
 
-const updateYearColorFromYear = async () => {
-  yearColor.value = getYearColor(Number(selectedYear.value))
-}
-
-watch(selectedYear, () => updateYearColorFromYear())
-
 onMounted(async () => {
-  await Promise.all([updateRankSuitFromDate(), updateYearColorFromYear()])
+  await updateRankSuitFromDate()
 })
 
 const previewImage = computed(() => {
@@ -340,7 +329,7 @@ const resetForm = async () => {
   const todayReset = new Date()
   selectedDate.value = todayReset.toISOString().split('T')[0]
   selectedTime.value = todayReset.toTimeString().slice(0, 5)
-  selectedYear.value = String(todayReset.getFullYear())
+
 
   if (imageObjectUrl.value) {
     revokeUrl(imageObjectUrl.value)
@@ -353,7 +342,6 @@ const resetForm = async () => {
 
   createdCard.value = null
   creationError.value = null
-  await Promise.all([updateRankSuitFromDate(), updateYearColorFromYear()])
 }
 
 onBeforeUnmount(() => {
