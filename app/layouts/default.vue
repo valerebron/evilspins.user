@@ -1,7 +1,8 @@
 <template>
-  <section class="card-list">
+  <section class="page">
     <slot />
   </section>
+  <Menu />
 </template>
 
 <script setup lang="ts">
@@ -21,7 +22,7 @@ useOutsideClick(() => {
 </script>
 
 <style lang="scss">
-.card-list {
+.page {
   display: flex;
   flex-wrap: nowrap;
   flex-direction: column;
