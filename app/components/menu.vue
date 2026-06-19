@@ -30,13 +30,11 @@ const rootPages = computed(() => {
 
 <style lang="scss">
 .menu {
-  height: 100dvh;
-  width: 60px;
+  width: 100%;
   position: fixed;
-  top: 0;
-  left: 0;
+  bottom: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   justify-content: center;
   padding: 24px 12px;
 }
@@ -46,7 +44,7 @@ const rootPages = computed(() => {
   padding: 0;
   margin: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 16px;
 }
 
