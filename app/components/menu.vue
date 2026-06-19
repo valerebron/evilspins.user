@@ -2,7 +2,7 @@
   <nav class="menu menu--desktop">
     <ul>
       <li>
-        <NuxtLink to="/">Accueil</NuxtLink>
+        <NuxtLink to="/">random</NuxtLink>
       </li>
 
       <li v-for="route in rootPages" :key="route.path">
@@ -22,7 +22,7 @@
       <nav class="menu-mobile__content" aria-label="Menu mobile">
         <ul>
           <li>
-            <NuxtLink to="/" @click="closeDialog">Accueil</NuxtLink>
+            <NuxtLink to="/" @click="closeDialog">random</NuxtLink>
           </li>
 
           <li v-for="route in rootPages" :key="`mobile-${route.path}`">
@@ -65,6 +65,7 @@ const rootPages = computed(() => {
       return r.path.split('/').filter(Boolean).length === 1
         && !r.path.includes(':') // exclure dynamiques si besoin
         && r.path !== '/'
+        && r.meta?.inMenu !== false
     })
 })
 </script>

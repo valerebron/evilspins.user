@@ -1,6 +1,7 @@
 class Sampler {
   public audioContext: AudioContext = new AudioContext()
   public gainNode: GainNode = new GainNode(this.audioContext)
+  public compressorNode: DynamicsCompressorNode = new DynamicsCompressorNode(this.audioContext)
 
   public audioBuffer: AudioBuffer | null = null
   public audioBufferReversed: AudioBuffer | null = null
@@ -9,10 +10,45 @@ class Sampler {
   public duration: number = 0
   public isReversed: boolean = false
   public currentSpeed: number = 0
+  private userVolume: number = 1
+  private normalizationGain: number = 1
   private stopTimeoutId: number | null = null // ID du setTimeout pour annuler l'arrêt
 
   constructor() {
-    this.gainNode.connect(this.audioContext.destination)
+    this.compressorNode.threshold.value = -10
+    this.compressorNode.knee.value = 20
+    this.compressorNode.ratio.value = 6
+    this.compressorNode.attack.value = 0.005
+    this.compressorNode.release.value = 0.2
+
+    this.gainNode.connect(this.compressorNode)
+    this.compressorNode.connect(this.audioContext.destination)
+  }
+
+  private computeRmsLevel(audioBuffer: AudioBuffer): number {
+    if (audioBuffer.numberOfChannels === 0) return 0
+
+    const channelData = audioBuffer.getChannelData(0)
+    const step = Math.max(1, Math.floor(channelData.length / 44100))
+    let sumSquares = 0
+    let count = 0
+
+    for (let i = 0; i < channelData.length; i += step) {
+      const sample = channelData[i]
+      sumSquares += sample * sample
+      count++
+    }
+
+    if (count === 0) return 0
+    return Math.sqrt(sumSquares / count)
+  }
+
+  private updateEffectiveGain() {
+    const MAX_EFFECTIVE_GAIN = 2
+    const effectiveGain = Math.max(0, Math.min(MAX_EFFECTIVE_GAIN, this.userVolume * this.normalizationGain))
+    const currentTime = this.audioContext.currentTime
+    this.gainNode.gain.cancelScheduledValues(currentTime)
+    this.gainNode.gain.linearRampToValueAtTime(effectiveGain, currentTime + 0.03)
   }
 
   async getAudioBuffer(audioUrl: string) {
@@ -27,6 +63,14 @@ class Sampler {
   async loadTrack(audioUrl: string) {
     this.audioBuffer = await this.getAudioBuffer(audioUrl)
     this.audioBufferReversed = this.getReversedAudioBuffer(this.audioBuffer)
+
+    const rms = this.computeRmsLevel(this.audioBuffer)
+    const TARGET_RMS = 0.12
+    const MIN_NORMALIZATION_GAIN = 0.65
+    const MAX_NORMALIZATION_GAIN = 1.8
+    const computedGain = rms > 0.0001 ? TARGET_RMS / rms : 1
+    this.normalizationGain = Math.max(MIN_NORMALIZATION_GAIN, Math.min(MAX_NORMALIZATION_GAIN, computedGain))
+    this.updateEffectiveGain()
 
     this.duration = this.audioBuffer.duration
   }
@@ -197,11 +241,18 @@ class Sampler {
   }
 
   mute() {
-    this.gainNode.gain.value = 0
+    this.userVolume = 0
+    this.updateEffectiveGain()
   }
 
   unmute() {
-    this.gainNode.gain.value = 1
+    this.userVolume = 1
+    this.updateEffectiveGain()
+  }
+
+  setVolume(volume: number) {
+    this.userVolume = Math.max(0, Math.min(1, volume))
+    this.updateEffectiveGain()
   }
 
   /**

@@ -143,6 +143,11 @@ const loadAudio = async (card: Card) => {
     if (disc.value) {
       // console.log('[DISC] Set Duration', sampler.value.duration)
       disc.value.setDuration(sampler.value.duration)
+      disc.value.setAngle(0)
+      isEndOfTrack.value = false
+      currentTurns.value = 0
+      totalTurns.value = sampler.value.duration * 0.75
+      progressPercentage.value = 17
       updateTurns()
     }
   } finally {
@@ -165,6 +170,32 @@ const play = (position = 0) => {
 
   sampler.value.play(position, true)
   disc.value.powerOnWithAcceleration()
+}
+
+const setVolume = (volume: number) => {
+  sampler.value?.setVolume(volume)
+}
+
+const getCurrentTime = () => {
+  return disc.value?.secondsPlayed || 0
+}
+
+const getDuration = () => {
+  return sampler.value?.duration || 0
+}
+
+const getRemainingTime = () => {
+  const duration = getDuration()
+  if (!duration) return Infinity
+  return Math.max(0, duration - getCurrentTime())
+}
+
+const unload = () => {
+  cleanup()
+  isEndOfTrack.value = false
+  progressPercentage.value = 0
+  currentTurns.value = 0
+  totalTurns.value = 0
 }
 
 const pause = () => {
@@ -420,7 +451,9 @@ onMounted(async () => {
   isMounted.value = true
   if (discRef.value) {
     initPlatine(discRef.value)
-    await loadAudio(props.card!)
+    if (props.card) {
+      await loadAudio(props.card)
+    }
   }
 
   // On attache le listener une seule fois au montage.
@@ -443,7 +476,18 @@ watch(() => props.card, (newCard) => {
   }
 })
 
-defineExpose({ pause, play, togglePlay, Reverse, Rewind })
+defineExpose({
+  pause,
+  play,
+  togglePlay,
+  Reverse,
+  Rewind,
+  setVolume,
+  getCurrentTime,
+  getDuration,
+  getRemainingTime,
+  unload,
+})
 </script>
 
 <style lang="scss">
