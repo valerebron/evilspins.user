@@ -199,6 +199,7 @@ watch(shouldClose, (should) => {
 
 watch(isOpen, (open) => {
   if (open) {
+    openCard(cardId.value)
     // Quand cette carte devient active, on prend le contrôle du Space
     setupSpaceListener()
   } else {
