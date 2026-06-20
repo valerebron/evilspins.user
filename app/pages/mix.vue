@@ -1,5 +1,6 @@
 <template>
   <main class="mix-page">
+    <div class="mix-page__fader-glow" :style="faderGlowStyle" aria-hidden="true" />
     <section class="mix-page__decks">
       <div class="mix-page__deck-slot">
         <MixDeckCard ref="deckARef" label="A" :card="deckA.card" :active="activeDeck === 'A'" />
@@ -51,6 +52,32 @@ const isTransitioning = ref(false)
 const autoplayBlocked = ref(false)
 const isPortraitLayout = ref(false)
 const isUserInteractingFader = ref(false)
+
+const faderGlowStyle = computed(() => {
+  const percent = Math.max(0, Math.min(1, crossfader.value)) * 100
+
+  if (isPortraitLayout.value) {
+    return {
+      background: 'rgba(255, 215, 0, 1)',
+      top: `${percent}%`,
+      left: '0',
+      right: '0',
+      height: '100svh',
+      width: '100%',
+      transform: 'translateY(-50%)',
+    }
+  }
+
+  return {
+    background: 'rgba(255, 215, 0, 1)',
+    left: `${percent}%`,
+    top: '0',
+    bottom: '0',
+    width: '100svw',
+    height: '100svh',
+    transform: 'translateX(-50%)',
+  }
+})
 
 const queue = ref<Card[]>([])
 
@@ -302,7 +329,17 @@ onUnmounted(() => {
   position: relative;
 }
 
+.mix-page__fader-glow {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(0px);
+  opacity: 1;
+}
+
 .mix-page__decks {
+  position: relative;
+  z-index: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: 1fr;

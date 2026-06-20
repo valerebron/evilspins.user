@@ -177,7 +177,7 @@ const onKeyDown = (event: KeyboardEvent) => {
   width: 26px;
   height: 36px;
   border-radius: 6px;
-  @apply bg-esyellow;
+  background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
   cursor: pointer;
 }
