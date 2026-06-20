@@ -1,9 +1,9 @@
 <template>
   <div class="crossfader" :class="[`crossfader--${orientation}`]">
-    <div ref="trackWrapRef" class="crossfader__track-wrap" role="slider" :tabindex="disabled ? -1 : 0"
-      :aria-valuemin="0" :aria-valuemax="100" :aria-valuenow="Math.round(clampedValue * 100)" aria-label="Crossfader"
-      @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerUp"
-      @keydown="onKeyDown">
+    <div ref="trackRef" class="crossfader__track-wrap" :class="{ 'crossfader__track-wrap--dragging': isDragging }"
+      role="slider" tabindex="0" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="clampedValue"
+      aria-label="Crossfader" @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp"
+      @pointercancel="onPointerUp" @lostpointercapture="onPointerUp" @keydown="onKeyDown">
       <div class="crossfader__track" />
       <div class="crossfader__thumb" :style="thumbStyle" />
     </div>
@@ -11,6 +11,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue'
+
 const props = withDefaults(defineProps<{
   modelValue: number
   orientation?: 'horizontal' | 'vertical'
@@ -29,40 +31,38 @@ const emit = defineEmits<{
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
 
 const clampedValue = computed(() => clamp(props.modelValue))
+const trackRef = ref<HTMLElement | null>(null)
+const activePointerId = ref<number | null>(null)
 const isDragging = ref(false)
-const trackWrapRef = ref<HTMLElement | null>(null)
 
 const thumbStyle = computed(() => {
-  const percent = `${clampedValue.value * 100}%`
+  const percent = clampedValue.value * 100
 
   if (props.orientation === 'vertical') {
     return {
-      top: percent,
       left: '50%',
+      top: `${percent}%`,
       transform: 'translate(-50%, -50%)',
     }
   }
 
   return {
-    left: percent,
+    left: `${percent}%`,
     top: '50%',
     transform: 'translate(-50%, -50%)',
   }
 })
 
-const valueFromPointer = (event: PointerEvent) => {
-  const track = trackWrapRef.value
-  if (!track) return clampedValue.value
+const setValueFromPointer = (clientX: number, clientY: number) => {
+  const track = trackRef.value
+  if (!track) return
 
   const rect = track.getBoundingClientRect()
+  const rawValue = props.orientation === 'vertical'
+    ? (clientY - rect.top) / rect.height
+    : (clientX - rect.left) / rect.width
 
-  if (props.orientation === 'vertical') {
-    const ratio = (event.clientY - rect.top) / rect.height
-    return clamp(ratio)
-  }
-
-  const ratio = (event.clientX - rect.left) / rect.width
-  return clamp(ratio)
+  emit('update:modelValue', clamp(rawValue))
 }
 
 const onInteractionStart = () => {
@@ -73,56 +73,66 @@ const onInteractionEnd = () => {
   emit('interaction-end')
 }
 
-const emitValue = (value: number) => {
-  emit('update:modelValue', clamp(value))
-}
-
 const onPointerDown = (event: PointerEvent) => {
-  if (props.disabled) return
+  if (props.disabled || !trackRef.value) return
 
+  activePointerId.value = event.pointerId
   isDragging.value = true
-  trackWrapRef.value?.setPointerCapture?.(event.pointerId)
+  trackRef.value.setPointerCapture(event.pointerId)
   onInteractionStart()
-  emitValue(valueFromPointer(event))
+  setValueFromPointer(event.clientX, event.clientY)
 }
 
 const onPointerMove = (event: PointerEvent) => {
-  if (!isDragging.value || props.disabled) return
-  emitValue(valueFromPointer(event))
+  if (!isDragging.value) return
+  if (activePointerId.value !== null && event.pointerId !== activePointerId.value) return
+  setValueFromPointer(event.clientX, event.clientY)
 }
 
 const onPointerUp = (event: PointerEvent) => {
   if (!isDragging.value) return
+  if (activePointerId.value !== null && event.pointerId !== activePointerId.value) return
+
+  if (trackRef.value?.hasPointerCapture(event.pointerId)) {
+    trackRef.value.releasePointerCapture(event.pointerId)
+  }
+
+  activePointerId.value = null
   isDragging.value = false
-  trackWrapRef.value?.releasePointerCapture?.(event.pointerId)
   onInteractionEnd()
 }
 
 const onKeyDown = (event: KeyboardEvent) => {
   if (props.disabled) return
 
-  const step = event.shiftKey ? 0.1 : 0.02
-  let nextValue = clampedValue.value
+  const key = event.key
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key)) return
 
-  if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-    event.preventDefault()
-    nextValue = clampedValue.value - step
-  } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-    event.preventDefault()
-    nextValue = clampedValue.value + step
-  } else if (event.key === 'Home') {
-    event.preventDefault()
-    nextValue = 0
-  } else if (event.key === 'End') {
-    event.preventDefault()
-    nextValue = 1
-  } else {
+  event.preventDefault()
+
+  const step = 0.02
+  const value = clampedValue.value
+
+  if (key === 'Home') {
+    emit('update:modelValue', 0)
     return
   }
 
-  onInteractionStart()
-  emitValue(nextValue)
-  onInteractionEnd()
+  if (key === 'End') {
+    emit('update:modelValue', 1)
+    return
+  }
+
+  const decreaseKey = props.orientation === 'vertical' ? 'ArrowUp' : 'ArrowLeft'
+  const increaseKey = props.orientation === 'vertical' ? 'ArrowDown' : 'ArrowRight'
+
+  if (key === decreaseKey) {
+    emit('update:modelValue', clamp(value - step))
+  }
+
+  if (key === increaseKey) {
+    emit('update:modelValue', clamp(value + step))
+  }
 }
 </script>
 
@@ -137,19 +147,17 @@ const onKeyDown = (event: KeyboardEvent) => {
 
 .crossfader__track-wrap {
   position: relative;
-  bottom: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 360px;
   height: 40px;
   touch-action: none;
-  cursor: pointer;
   outline: none;
 }
 
 .crossfader__track-wrap:focus-visible {
-  box-shadow: 0 0 0 2px rgba(120, 120, 120, 0.45);
+  box-shadow: 0 0 0 2px rgba(90, 90, 90, 0.35);
   border-radius: 8px;
 }
 
@@ -158,28 +166,30 @@ const onKeyDown = (event: KeyboardEvent) => {
   left: 0;
   right: 0;
   top: 50%;
-  height: 4px;
+  height: 6px;
   transform: translateY(-50%);
   border-radius: 999px;
-  background: #9a9a9a;
+  background: #d3d3d3;
 }
 
 .crossfader__thumb {
   position: absolute;
-  width: 62px;
-  height: 28px;
+  width: 26px;
+  height: 36px;
   border-radius: 6px;
-  border: 1px solid #8d8d8d;
-  background: linear-gradient(180deg, #d8d8d8 0%, #b8b8b8 100%);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.24);
-  pointer-events: none;
+  @apply bg-esyellow;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+}
+
+.crossfader__track-wrap--dragging .crossfader__thumb {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.22);
 }
 
 .crossfader--vertical {
   .crossfader__track-wrap {
-    width: 42px;
-    height: 300px;
-    bottom: 0;
+    width: 40px;
+    height: 150px;
   }
 
   .crossfader__track {
@@ -190,12 +200,13 @@ const onKeyDown = (event: KeyboardEvent) => {
     width: 6px;
     height: auto;
     transform: translateX(-50%);
-    background: #9a9a9a;
+    background: #a6a6a6;
   }
 
   .crossfader__thumb {
-    width: 28px;
-    height: 62px;
+    position: absolute;
+    width: 36px;
+    height: 26px;
   }
 }
 </style>

@@ -330,9 +330,9 @@ onUnmounted(() => {
   transform: translateY(-50%);
   z-index: 3;
   background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 14px;
   padding: 10px 6px;
+  margin: 10px;
 }
 
 .mix-page__autoplay {
@@ -372,7 +372,7 @@ onUnmounted(() => {
     transform: none;
     justify-self: center;
     align-self: start;
-    margin-top: -14px;
+    margin-top: -100px;
     background: transparent;
     border: 0;
     padding: 0;
