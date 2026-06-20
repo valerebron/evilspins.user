@@ -3,8 +3,19 @@ export default defineEventHandler(async (event) => {
     const query = getQuery(event)
     const page = parseInt(query.page as string) || 1
     const limit = parseInt(query.limit as string) || 500
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    })
 
-    const response = await $fetch(`${process.env.DATA_URL}api/card?page=${page}&limit=${limit}`)
+    for (const key of ['search', 'suit', 'rank', 'year'] as const) {
+      const value = query[key]
+      if (typeof value === 'string' && value.trim()) {
+        params.set(key, value.trim())
+      }
+    }
+
+    const response = await $fetch(`${process.env.DATA_URL}api/card?${params.toString()}`)
 
     // Préfixer les URLs avec DATA_URL pour chaque carte
     const processedCards = response.data.map((card: any) => {
