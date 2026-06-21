@@ -69,6 +69,7 @@ const isMounted = ref(false)
 const isPlaying = computed(() => Math.abs(Math.round(sampler.value?.currentSpeed || 0)) !== 0)
 const isReversed = computed(() => disc.value?.isReversed || false)
 const currentSpeed = computed(() => sampler.value?.currentSpeed || 0)
+const { requestWakeLock, releaseWakeLock } = useScreenWakeLock()
 
 const canAutoplayNow = async () => {
   if (!sampler.value) return false
@@ -183,6 +184,7 @@ const play = async (position = 0) => {
 
   sampler.value.play(position, true)
   disc.value.powerOnWithAcceleration()
+  void requestWakeLock()
   return true
 }
 
@@ -206,6 +208,7 @@ const getRemainingTime = () => {
 
 const unload = () => {
   cleanup()
+  void releaseWakeLock()
   isEndOfTrack.value = false
   progressPercentage.value = 0
   currentTurns.value = 0
@@ -218,6 +221,7 @@ const pause = () => {
 
   sampler.value.pauseWithDeceleration()
   disc.value.powerOffWithDeceleration()
+  void releaseWakeLock()
 }
 
 const togglePlay = async () => {
@@ -240,6 +244,7 @@ const cleanup = () => {
   if (sampler.value) {
     sampler.value.pause()
   }
+  void releaseWakeLock()
 }
 
 const Power = async () => {
