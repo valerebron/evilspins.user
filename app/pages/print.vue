@@ -135,12 +135,12 @@ import {
   getSheetCount,
   mapCardsForBack,
   mmToPt,
-  toSearchableText,
   type BackAlignmentMode,
   type PaperDimensions,
   type PaperFormatId,
   type PrintCardItem,
 } from '~/utils/print'
+import type { Card } from '~~/types/types'
 
 interface CardApiResponse {
   data?: PrintCardItem[]
@@ -175,6 +175,7 @@ const previewScale = ref(0.31)
 
 const isGenerating = ref(false)
 const pdfError = ref('')
+const isSearchModalOpen = ref(false)
 
 const paperFormatEntries = Object.entries(PAPER_FORMATS)
 const selectedPaperFormat = computed(() => PAPER_FORMATS[paperFormat.value])
@@ -202,16 +203,18 @@ onBeforeUnmount(() => {
 const { data, pending, error } = await useAsyncData<CardApiResponse>(
   'print-cards',
   async () => {
+    const normalizedSearch = searchQuery.value.trim()
     const response = await $fetch<CardApiResponse>('/api/card', {
       params: {
         page: page.value,
         limit: pageSize.value,
+        search: normalizedSearch || undefined,
       },
     })
     return response
   },
   {
-    watch: [page, pageSize],
+    watch: [page, pageSize, searchQuery],
     default: () => ({ data: [], pagination: { page: 1, limit: 30, total: 0, totalPages: 1 } }),
   },
 )
@@ -219,26 +222,14 @@ const { data, pending, error } = await useAsyncData<CardApiResponse>(
 const cards = computed(() => data.value?.data || [])
 
 const visibleCards = computed(() => {
-  if (!searchQuery.value) {
-    return cards.value
-  }
-
-  return cards.value.filter((card) => {
-    return toSearchableText(card).includes(searchQuery.value)
-  })
+  return cards.value
 })
 
 const totalItems = computed(() => {
-  if (searchQuery.value) {
-    return visibleCards.value.length
-  }
   return data.value?.pagination?.total || cards.value.length
 })
 
 const totalPages = computed(() => {
-  if (searchQuery.value) {
-    return 1
-  }
   return Math.max(1, data.value?.pagination?.totalPages || 1)
 })
 
@@ -277,6 +268,10 @@ const togglePageSelection = (checked: boolean) => {
     return
   }
   printStore.removeMany(visibleCards.value.map((card) => card.slug))
+}
+
+const onSelectFromSearch = (card: Card) => {
+  printStore.toggleCard(card as PrintCardItem)
 }
 
 const updatePreviewScale = () => {
@@ -1263,6 +1258,16 @@ const generatePdf = async () => {
   gap: 1rem;
 }
 
+.open-search-btn {
+  border: 1px solid #355673;
+  background: #0b1f35;
+  color: #eff5fb;
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.85rem;
+  cursor: pointer;
+  width: fit-content;
+}
+
 .preview-panel {
   display: grid;
   gap: 0.7rem;
@@ -1321,6 +1326,10 @@ const generatePdf = async () => {
 @media (max-width: 1240px) {
   .layout-grid {
     grid-template-columns: 1fr;
+  }
+
+  .open-search-btn {
+    width: 100%;
   }
 }
 

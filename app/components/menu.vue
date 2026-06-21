@@ -79,6 +79,7 @@ const rootPages = computed(() => {
   flex-direction: row;
   justify-content: center;
   padding: 24px 12px;
+  z-index: 20;
 }
 
 .menu ul {

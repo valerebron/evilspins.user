@@ -1,5 +1,5 @@
 <template>
-  <div class="rank flex items-center justify-center size-[20%] absolute top-[8%] right-[12%] text-[100%]">
+  <div class="rank flex items-center justify-center size-[20%] absolute top-[8%] left-[12%] text-[100%]">
     <div class="suit absolute" :class="color">
       <img :src="image" draggable="false" />
     </div>

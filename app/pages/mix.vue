@@ -3,10 +3,12 @@
     <div class="mix-page__fader-glow" :style="faderGlowStyle" aria-hidden="true" />
     <section class="mix-page__decks">
       <div class="mix-page__deck-slot">
+        <button type="button" class="mix-page__deck-picker" @click="openDeckPicker('A')">Eject A</button>
         <MixDeckCard ref="deckARef" label="A" :card="deckA.card" :active="activeDeck === 'A'" />
       </div>
 
       <div class="mix-page__deck-slot">
+        <button type="button" class="mix-page__deck-picker" @click="openDeckPicker('B')">Eject B</button>
         <MixDeckCard ref="deckBRef" label="B" :card="deckB.card" :active="activeDeck === 'B'" />
       </div>
     </section>
@@ -20,12 +22,16 @@
     <div v-if="autoplayBlocked" class="mix-page__autoplay">
       <button type="button" @click="resumePlayback">Lancer le Mix</button>
     </div>
+
+    <CardSearchPanel mode="modal" :open="isPickerOpen" :title="pickerTitle" pick-label="Charger"
+      :selected-slug="selectedDeckSlug" close-on-select @select="onPickCardForDeck" @close="closeDeckPicker" />
   </main>
 </template>
 
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
 import MixDeckCard from '~/components/MixDeckCard.vue'
+import CardSearchPanel from '~/components/Search/CardSearchPanel.vue'
 
 definePageMeta({
   inMenu: true,
@@ -52,6 +58,23 @@ const isTransitioning = ref(false)
 const autoplayBlocked = ref(false)
 const isPortraitLayout = ref(false)
 const isUserInteractingFader = ref(false)
+const pickerDeck = ref<'A' | 'B' | null>(null)
+
+const isPickerOpen = computed(() => pickerDeck.value !== null)
+
+const pickerTitle = computed(() => {
+  return pickerDeck.value ? `Choisir une carte pour la platine ${pickerDeck.value}` : 'Choisir une carte'
+})
+
+const selectedDeckSlug = computed(() => {
+  if (pickerDeck.value === 'A') {
+    return deckA.card?.slug || null
+  }
+  if (pickerDeck.value === 'B') {
+    return deckB.card?.slug || null
+  }
+  return null
+})
 
 const faderGlowStyle = computed(() => {
   const percent = Math.max(0, Math.min(1, crossfader.value)) * 100
@@ -114,6 +137,48 @@ const getInactiveDeck = () => {
 
 const fetchRandomCard = async () => {
   return await $fetch<Card>('/api/card/random')
+}
+
+const openDeckPicker = (deck: 'A' | 'B') => {
+  pickerDeck.value = deck
+}
+
+const closeDeckPicker = () => {
+  pickerDeck.value = null
+}
+
+const onPickCardForDeck = async (card: Card) => {
+  const targetDeck = pickerDeck.value
+  if (!targetDeck) {
+    return
+  }
+
+  const currentRef = getDeckRef(targetDeck)
+  currentRef?.pause()
+  currentRef?.unload?.()
+
+  if (targetDeck === 'A') {
+    deckA.card = card
+  } else {
+    deckB.card = card
+  }
+
+  queue.value = queue.value.filter((queuedCard) => queuedCard.slug !== card.slug)
+
+  await nextTick()
+  const isReady = await waitForReady(targetDeck)
+
+  // Re-apply current fader balance after manual deck replacement.
+  applyCrossfader(crossfader.value)
+
+  if (targetDeck === activeDeck.value && isReady) {
+    const targetRef = getDeckRef(targetDeck)
+    const didPlay = await targetRef?.play(0)
+    autoplayBlocked.value = !didPlay
+    applyCrossfader(crossfader.value)
+  }
+
+  closeDeckPicker()
 }
 
 const fillQueue = async (minSize = 3) => {
@@ -353,11 +418,27 @@ onUnmounted(() => {
   min-height: 0;
   width: 100%;
   height: 100%;
+  position: relative;
   container-type: size;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+}
+
+.mix-page__deck-picker {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 4;
+  border: 1px solid #111;
+  background: rgba(255, 255, 255, 0.9);
+  color: #111;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.28rem 0.55rem;
+  cursor: pointer;
 }
 
 .mix-page__fader-wrap {

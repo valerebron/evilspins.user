@@ -169,7 +169,7 @@ const onKeyDown = (event: KeyboardEvent) => {
   height: 6px;
   transform: translateY(-50%);
   border-radius: 999px;
-  background: #d3d3d3;
+  background: white;
 }
 
 .crossfader__thumb {

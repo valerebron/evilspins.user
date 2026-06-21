@@ -22,10 +22,8 @@
         height: progressPercentage + '%',
         width: progressPercentage + '%'
       }"></div>
-      <button class="power-button" :class="{ isPowerActive }"
-        :style="{ '--power-grayscale': String(powerButtonGrayscale) }" @click="Power"
-        @touchstart.passive="isPowerActive = true" @touchend="isPowerActive = false"
-        @touchcancel="isPowerActive = false" :disabled="isLoadingTrack">
+      <button class="power-button" :class="{ isPowerActive }" @click="Power" @touchstart.passive="isPowerActive = true"
+        @touchend="isPowerActive = false" @touchcancel="isPowerActive = false" :disabled="isLoadingTrack">
         <img class="macaron" src="/favicon.svg" v-if="!isEndOfTrack">
         <img class="macaron" @click.stop="Rewind" src="/rewind.svg" v-if="isEndOfTrack" />
       </button>
@@ -71,19 +69,6 @@ const isMounted = ref(false)
 const isPlaying = computed(() => Math.abs(Math.round(sampler.value?.currentSpeed || 0)) !== 0)
 const isReversed = computed(() => disc.value?.isReversed || false)
 const currentSpeed = computed(() => sampler.value?.currentSpeed || 0)
-const visualVolume = ref<number | null>(null)
-
-const powerButtonGrayscale = computed(() => {
-  // Hors mode mix (pas de volume externe), on garde le comportement historique:
-  // arrêté = noir et blanc, en lecture = couleur.
-  if (visualVolume.value === null) {
-    return isPlaying.value ? 0 : 1
-  }
-
-  // En mode mix, 0% volume => 100% N&B, 100% volume => 0% N&B.
-  const clamped = Math.max(0, Math.min(1, visualVolume.value))
-  return 1 - clamped
-})
 
 // Actions
 const initPlatine = (element: HTMLElement) => {
@@ -101,8 +86,7 @@ const initPlatine = (element: HTMLElement) => {
 
     disc.value.callbacks.onDragStart = () => {
       // Activer le son à chaque fois qu'on glisse, pas seulement au premier play
-      if (sampler.value && disc.value) {
-        // On joue toujours le son quand on glisse, même après une pause
+      if (sampler.value && disc.value) {        // On joue toujours le son quand on glisse, même après une pause
         // Sans accélération pour le scratch
         sampler.value.play(disc.value.secondsPlayed || 0, false)
       }
@@ -188,7 +172,6 @@ const play = (position = 0) => {
 }
 
 const setVolume = (volume: number) => {
-  visualVolume.value = Math.max(0, Math.min(1, volume))
   sampler.value?.setVolume(volume)
 }
 
@@ -542,11 +525,10 @@ defineExpose({
   }
 
   .power-button {
-    filter: grayscale(var(--power-grayscale, 1));
     position: absolute;
     z-index: 100;
     cursor: pointer;
-    transition: transform 0.1s, filter 0.25s linear;
+    transition: all 0.1s;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -560,7 +542,8 @@ defineExpose({
 
     .macaron {
       position: absolute;
-      transition: transform 0.1s;
+      filter: grayscale(1);
+      transition: transform 0.1s, filter 0.8s;
       @apply size-2/3;
     }
 
@@ -570,6 +553,10 @@ defineExpose({
         transform: scale(0.8);
       }
     }
+  }
+
+  &.playing .power-button .macaron {
+    filter: grayscale(0);
   }
 
   .disc-middle {
