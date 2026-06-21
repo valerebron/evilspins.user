@@ -72,8 +72,10 @@ const showPlayButton = computed(() => {
 })
 
 const platineRef = useTemplateRef('platineRef')
+const { canAutoplayNow, requestAutoplayUnlock } = useAutoplayGate()
 
 const { openCard, closeCard, openCardId } = useCardOpenState()
+let stopCrossTabSync: (() => void) | null = null
 
 // Durées pour l'orchestration des animations entre cartes.
 // - CARD_TRANSITION_DURATION : durée complète de la transition visuelle (shrink cadre + platine fade) + marge décélération audio.
@@ -87,9 +89,14 @@ const shouldClose = computed(() => {
   return openCardId.value !== null && openCardId.value !== cardId.value
 })
 
-const clickOnCard = () => {
+const clickOnCard = async () => {
   if (props.navigateOnClick) {
     navigateTo(`/card/${props.card.slug}?autoplay=true`)
+    return
+  }
+
+  const canStart = await requestAutoplayUnlock()
+  if (!canStart) {
     return
   }
 
@@ -107,9 +114,14 @@ const clickOnCard = () => {
   } else {
     // Carte déjà montée : on attend un petit délai (CARD_OTHERS_CLOSE_DELAY)
     // avant de lancer notre propre animation d'ouverture.
-    setTimeout(() => {
+    setTimeout(async () => {
+      const started = await platineRef.value?.play?.(0)
+      if (!started) {
+        return
+      }
+
+      announcePlaybackStarted()
       isOpen.value = true
-      platineRef.value?.play?.(0)
       emit('open')
     }, CARD_OTHERS_CLOSE_DELAY)
   }
@@ -124,6 +136,14 @@ const onTrackLoaded = async () => {
   await timeout(350)
   await timeout(CARD_OTHERS_CLOSE_DELAY)
 
+  const started = await platineRef.value?.play?.(0)
+  if (!started) {
+    isLoading.value = false
+    isPlatineMounted.value = false
+    return
+  }
+
+  announcePlaybackStarted()
   isOpen.value = true
   emit('open')
 
@@ -131,10 +151,6 @@ const onTrackLoaded = async () => {
   document.title = `${artist} - ${props.card.title}`
   window.history.pushState({}, '', `/card/${props.card.slug}`)
   isLoading.value = false
-
-  // On lance le play (accélération) pendant que l'animation d'ouverture de la carte tourne.
-  await timeout(250)
-  platineRef.value?.play()
 }
 
 const closePlatine = () => {
@@ -188,6 +204,22 @@ const cleanupSpaceListener = () => {
   }
 }
 
+const pauseIfBackgrounded = () => {
+  if (document.hidden) {
+    platineRef.value?.pause?.()
+  }
+}
+
+const pauseOnPageHide = () => {
+  platineRef.value?.pause?.()
+}
+
+const pauseOnWindowBlur = () => {
+  if (document.hidden) {
+    platineRef.value?.pause?.()
+  }
+}
+
 // Quand une autre carte devient active (via le state global), on met en pause
 // celle-ci pour éviter que l'audio continue en arrière-plan.
 watch(shouldClose, (should) => {
@@ -208,11 +240,18 @@ watch(isOpen, (open) => {
 }, { immediate: true })
 
 // Auto-play logic when autoplay prop is true
-watch(() => props.autoplay, (autoplay) => {
-  if (autoplay && !isPlatineMounted.value) {
-    isPlatineMounted.value = true
-    isLoading.value = true
+watch(() => props.autoplay, async (autoplay) => {
+  if (!autoplay || isPlatineMounted.value) {
+    return
   }
+
+  const canStart = await canAutoplayNow()
+  if (!canStart) {
+    return
+  }
+
+  isPlatineMounted.value = true
+  isLoading.value = true
 }, { immediate: true })
 
 watch(openCardId, (id) => {
@@ -230,6 +269,13 @@ watch(openCardId, (id) => {
 
 onMounted(() => {
   window.addEventListener('card-close-request', closePlatine)
+  document.addEventListener('visibilitychange', pauseIfBackgrounded)
+  window.addEventListener('pagehide', pauseOnPageHide)
+  window.addEventListener('blur', pauseOnWindowBlur)
+
+  stopCrossTabSync = useCrossTabAudioPause(() => {
+    closePlatine()
+  })
 
   if (props.autoplay) return
   previousUrl = window.location.pathname
@@ -237,9 +283,17 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('card-close-request', closePlatine)
+  document.removeEventListener('visibilitychange', pauseIfBackgrounded)
+  window.removeEventListener('pagehide', pauseOnPageHide)
+  window.removeEventListener('blur', pauseOnWindowBlur)
 })
 
 onUnmounted(() => {
+  if (stopCrossTabSync) {
+    stopCrossTabSync()
+    stopCrossTabSync = null
+  }
+
   cleanupSpaceListener()
 })
 </script>

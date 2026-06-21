@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
-import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import Disc from '~/utils/platine/disc'
 import Sampler from '~/utils/platine/sampler'
 
@@ -70,6 +70,11 @@ const isPlaying = computed(() => Math.abs(Math.round(sampler.value?.currentSpeed
 const isReversed = computed(() => disc.value?.isReversed || false)
 const currentSpeed = computed(() => sampler.value?.currentSpeed || 0)
 
+const canAutoplayNow = async () => {
+  if (!sampler.value) return false
+  return await sampler.value.ensureAudioContextRunning()
+}
+
 // Actions
 const initPlatine = (element: HTMLElement) => {
   // console.log('[INIT] Platine')
@@ -84,9 +89,13 @@ const initPlatine = (element: HTMLElement) => {
       sampler.value?.pause()
     }
 
-    disc.value.callbacks.onDragStart = () => {
+    disc.value.callbacks.onDragStart = async () => {
       // Activer le son à chaque fois qu'on glisse, pas seulement au premier play
-      if (sampler.value && disc.value) {        // On joue toujours le son quand on glisse, même après une pause
+      if (sampler.value && disc.value) {
+        const canPlay = await sampler.value.ensureAudioContextRunning()
+        if (!canPlay) return
+
+        // On joue toujours le son quand on glisse, même après une pause
         // Sans accélération pour le scratch
         sampler.value.play(disc.value.secondsPlayed || 0, false)
       }
@@ -155,9 +164,14 @@ const loadAudio = async (card: Card) => {
   }
 }
 
-const play = (position = 0) => {
+const play = async (position = 0) => {
   isFirstPlay.value = false
-  if (!disc.value || !sampler.value || !props.card) return
+  if (!disc.value || !sampler.value || !props.card) return false
+
+  const canPlay = await sampler.value.ensureAudioContextRunning()
+  if (!canPlay) {
+    return false
+  }
 
   // Quand on force un replay depuis le début (position 0), on réinitialise aussi le visuel du disque
   if (position === 0) {
@@ -169,6 +183,7 @@ const play = (position = 0) => {
 
   sampler.value.play(position, true)
   disc.value.powerOnWithAcceleration()
+  return true
 }
 
 const setVolume = (volume: number) => {
@@ -205,13 +220,13 @@ const pause = () => {
   disc.value.powerOffWithDeceleration()
 }
 
-const togglePlay = () => {
+const togglePlay = async () => {
   if (isPlaying.value) {
     pause()
   } else {
     // Reprendre la lecture à la position actuelle
     const currentPosition = disc.value?.secondsPlayed || 0
-    play(currentPosition)
+    await play(currentPosition)
   }
 }
 
@@ -227,12 +242,12 @@ const cleanup = () => {
   }
 }
 
-const Power = () => {
+const Power = async () => {
   if (isEndOfTrack.value) {
     Rewind()
     return
   }
-  togglePlay()
+  await togglePlay()
 }
 
 const Reverse = () => {
@@ -251,7 +266,9 @@ const Rewind = async () => {
   if (!disc.value || !sampler.value) return
 
   // Sauvegarder l'état actuel
-  disc.value.isStopped() ? play() : null
+  if (disc.value.isStopped()) {
+    void play()
+  }
   const wasPlaying = !disc.value.isStopped()
   const currentSpeed = disc.value.playbackSpeed
 
@@ -282,7 +299,7 @@ const Rewind = async () => {
     }
 
     requestAnimationFrame(slowDown)
-    play()
+    void play()
   }
 
   const performRewind = () => {
@@ -476,6 +493,7 @@ watch(() => props.card, (newCard) => {
 })
 
 defineExpose({
+  canAutoplayNow,
   pause,
   play,
   togglePlay,

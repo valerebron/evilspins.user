@@ -14,6 +14,24 @@ class Sampler {
   private normalizationGain: number = 1
   private stopTimeoutId: number | null = null // ID du setTimeout pour annuler l'arrêt
 
+  isAudioContextRunning() {
+    return this.audioContext.state === 'running'
+  }
+
+  async ensureAudioContextRunning() {
+    if (this.audioContext.state === 'running') {
+      return true
+    }
+
+    try {
+      await this.audioContext.resume()
+    } catch {
+      return false
+    }
+
+    return this.audioContext.state === 'running'
+  }
+
   constructor() {
     this.compressorNode.threshold.value = -10
     this.compressorNode.knee.value = 20

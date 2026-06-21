@@ -70,15 +70,15 @@ const waitUntilReady = (timeoutMs = 12000): Promise<boolean> => {
   })
 }
 
-const play = (position = 0) => {
-  platineRef.value?.play(position)
-  return true
+const play = async (position = 0) => {
+  if (!platineRef.value) return false
+  return await platineRef.value.play(position)
 }
 
-const resume = () => {
+const resume = async () => {
   const current = platineRef.value?.getCurrentTime?.() || 0
-  platineRef.value?.play(current)
-  return true
+  if (!platineRef.value) return false
+  return await platineRef.value.play(current)
 }
 
 const pause = () => {
