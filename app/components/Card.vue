@@ -114,15 +114,18 @@ const clickOnCard = async () => {
   } else {
     // Carte déjà montée : on attend un petit délai (CARD_OTHERS_CLOSE_DELAY)
     // avant de lancer notre propre animation d'ouverture.
+    isLoading.value = true
     setTimeout(async () => {
       const started = await platineRef.value?.play?.(0)
       if (!started) {
+        isLoading.value = false
         return
       }
 
       announcePlaybackStarted()
       isOpen.value = true
       emit('open')
+      isLoading.value = false
     }, CARD_OTHERS_CLOSE_DELAY)
   }
 }
