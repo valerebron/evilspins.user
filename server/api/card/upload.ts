@@ -6,5 +6,5 @@ export default defineEventHandler(async (event) => {
 
   const target = new URL('/api/card/upload', dataUrl).toString()
 
-  return proxyRequest(event, target)
+  return proxyRequest(event, target, { streamRequest: true })
 })
