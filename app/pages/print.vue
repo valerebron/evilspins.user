@@ -51,6 +51,11 @@
         Marques de coupe
       </label>
 
+      <label class="checkbox-inline">
+        <input v-model="roundedFront" type="checkbox" />
+        Arrondis recto
+      </label>
+
       <label>
         Cartes/page
         <select v-model.number="pageSize">
@@ -97,7 +102,7 @@
         </header>
 
         <ImpositionPreview :cards="sheetCards" :face="previewFace" :scale="previewScale" :back-alignment="backAlignment"
-          :paper-format="paperFormat" />
+          :paper-format="paperFormat" :rounded-front="roundedFront" />
       </section>
     </section>
   </main>
@@ -168,6 +173,7 @@ const exportMode = ref<'duplex' | 'separate'>('duplex')
 const backAlignment = ref<BackAlignmentMode>('mirror')
 const paperFormat = ref<PaperFormatId>('a4')
 const includeCutMarks = ref(true)
+const roundedFront = ref(false)
 
 const previewFace = ref<'front' | 'back'>('front')
 const currentSheet = ref(1)
@@ -509,6 +515,7 @@ const loadMediaCompositeImage = async (
   doc: PDFDocument,
   card: PrintCardItem,
   face: 'front' | 'back',
+  rounded = true,
 ): Promise<LoadedImage | null> => {
   const cacheKey = [
     'v5',
@@ -518,6 +525,7 @@ const loadMediaCompositeImage = async (
     card.rank || '',
     card.suit || '',
     String(card.year || ''),
+    rounded ? 'r' : 'sq',
   ].join('|')
 
   if (mediaCompositeCache.has(cacheKey)) {
@@ -530,7 +538,7 @@ const loadMediaCompositeImage = async (
     const mediaHeightMm = CARD_MM.height - insetMm * 2
     const widthPx = 900
     const heightPx = Math.round((widthPx * mediaHeightMm) / mediaWidthMm)
-    const cornerRadiusPx = (2.2 / mediaWidthMm) * widthPx
+    const cornerRadiusPx = rounded ? (2.2 / mediaWidthMm) * widthPx : 0
     const pxPerMm = widthPx / mediaWidthMm
 
     const canvas = document.createElement('canvas')
@@ -568,7 +576,7 @@ const loadMediaCompositeImage = async (
         '♥': '/%E2%99%A5.svg',
       }
       const suitIconSize = widthPx * 0.29
-      const suitIconX = widthPx * 0.63
+      const suitIconX = widthPx * 0.08
       const suitIconY = (heightPx * 0.01) + (3 * pxPerMm)
       const suitAsset = suitAssetBySymbol[suitSymbol]
 
@@ -725,6 +733,7 @@ const drawCardFace = async (
   face: 'front' | 'back',
   backAlignment: BackAlignmentMode,
   layer: 'bleed' | 'content',
+  rounded = true,
 ) => {
   const xTrim = slot.xMm
   const yTrim = slot.yMm
@@ -918,7 +927,7 @@ const drawCardFace = async (
   }
 
 
-  const cornerRadiusMm = face === 'front' ? 2.2 : 0
+  const cornerRadiusMm = face === 'front' && rounded ? 2.2 : 0
   const backBleedOverlapMm = 0.12
 
   if (layer === 'bleed') {
@@ -949,7 +958,7 @@ const drawCardFace = async (
   }
 
   if (face === 'front') {
-    const composite = await loadMediaCompositeImage(doc, card, 'front')
+    const composite = await loadMediaCompositeImage(doc, card, 'front', rounded)
     if (composite) {
       clipAndDrawImage(pageRef, composite.image, mediaX, mediaY, mediaWidth, mediaHeight, mediaX, mediaY, mediaWidth, mediaHeight, cornerRadiusMm)
     }
@@ -1062,7 +1071,7 @@ const buildFacePage = async (
         continue
       }
       try {
-        await drawCardFace(doc, pageRef, card, slot, pageDimensions, face, backAlignment, layer)
+        await drawCardFace(doc, pageRef, card, slot, pageDimensions, face, backAlignment, layer, roundedFront.value)
       } catch (error) {
         console.warn('[print] drawCardFace failed, skipping card', {
           face,

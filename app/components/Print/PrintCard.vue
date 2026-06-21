@@ -1,8 +1,8 @@
 <template>
   <article class="print-card"
-    :class="[`face-${face}`, { 'back-mirror': face === 'back' && backAlignment === 'mirror' }]" :style="cardStyle"
+    :class="[`face-${face}`, { 'back-mirror': face === 'back' && backAlignment === 'mirror', 'rounded-front': face === 'front' && roundedFront }]" :style="cardStyle"
     aria-hidden="true">
-    <div class="trim-card">
+    <div class="trim-card" :style="{ borderRadius: face === 'front' ? (roundedFront ? '3.6mm' : '0') : '0' }">
       <template v-if="card">
         <CardElement class="card-element-print" :card="card" :is-face-up="face === 'front'" :is-loading="false"
           role="img" tabindex="-1" />
@@ -25,10 +25,12 @@ const props = withDefaults(
     card: PrintCardItem | null
     face: 'front' | 'back'
     backAlignment?: 'mirror' | 'aligned'
+    roundedFront?: boolean
   }>(),
   {
     card: null,
     backAlignment: 'mirror',
+    roundedFront: true,
   },
 )
 
@@ -85,6 +87,10 @@ const cardStyle = computed(() => {
   border-radius: 3.2mm;
 }
 
+.print-card.face-front:not(.rounded-front) :deep(.face-up) {
+  border-radius: 0;
+}
+
 .print-card :deep(.face-up),
 .print-card :deep(.face-down) {
   background: transparent !important;
@@ -105,9 +111,17 @@ const cardStyle = computed(() => {
   border-radius: 3.2mm;
 }
 
+.print-card.face-front:not(.rounded-front) :deep(.face-up .cover) {
+  border-radius: 0;
+}
+
 .print-card.face-front :deep(.face-up .cover-image),
 .print-card.face-back :deep(.face-down .cover-image) {
   border-radius: 3.2mm;
+}
+
+.print-card.face-front:not(.rounded-front) :deep(.face-up .cover-image) {
+  border-radius: 0;
 }
 
 .print-card.face-back .trim-card {

@@ -17,7 +17,7 @@
             width: `${cardWidth}mm`,
             height: `${cardHeight}mm`,
           }">
-            <PrintCard :card="cardsBySlot[slot.index] || null" :face="face" :back-alignment="backAlignment" />
+            <PrintCard :card="cardsBySlot[slot.index] || null" :face="face" :back-alignment="backAlignment" :rounded-front="props.roundedFront ?? true" />
             <div class="trim-outline" />
           </div>
         </div>
@@ -45,6 +45,7 @@ const props = withDefaults(
     scale: number
     backAlignment: BackAlignmentMode
     paperFormat: PaperFormatId
+    roundedFront?: boolean
   }>(),
   {
     cards: () => [],
@@ -52,6 +53,7 @@ const props = withDefaults(
     scale: 0.34,
     backAlignment: 'mirror',
     paperFormat: 'a4',
+    roundedFront: true,
   },
 )
 
