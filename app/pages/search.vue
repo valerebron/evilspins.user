@@ -8,5 +8,3 @@ const onSelectCard = (card: Card) => {
   void navigateTo(`/card/${card.slug}?autoplay=true`)
 }
 </script>
-
-<style scoped></style>
