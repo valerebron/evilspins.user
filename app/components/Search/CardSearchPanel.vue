@@ -30,7 +30,7 @@
         <label class="card-search-panel__year-filter">
           Year
           <select v-model="selectedYearInput">
-            <option value="">Toutes</option>
+            <option value="">Toutes années</option>
             <option v-for="year in yearOptions" :key="year" :value="String(year)">{{ year }}</option>
           </select>
         </label>
@@ -71,8 +71,8 @@
                   {{ pickLabel }}
                 </button>
 
-                <button type="button" class="card-result__nfc"
-                  :disabled="writingNfcId === getCardId(card) || !canWriteNfc" @click="writeCardToNfc(card)">
+                <button type="button" class="card-result__nfc" v-if="writingNfcId !== getCardId(card) && canWriteNfc"
+                  @click="writeCardToNfc(card)">
                   {{ writingNfcId === getCardId(card) ? 'Ecriture NFC...' : 'Ecrire NFC' }}
                 </button>
               </div>
@@ -343,6 +343,10 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .card-search-panel {
+  width: 100%;
+}
+
+.card {
   width: 100%;
 }
 
