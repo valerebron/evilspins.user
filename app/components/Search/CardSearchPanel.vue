@@ -35,6 +35,11 @@
           </select>
         </label>
 
+        <label class="card-search-panel__readonly-toggle">
+          <input v-model="lockNfcAfterWrite" type="checkbox" />
+          Verrouiller apres ecriture
+        </label>
+
         <button type="button" class="card-search-panel__reset" @click="resetFilters">Reset</button>
       </div>
 
@@ -155,6 +160,8 @@ const selectedYearInput = computed({
   },
 })
 
+const lockNfcAfterWrite = ref(false)
+
 const writingNfcId = ref<string | null>(null)
 const nfcStatus = ref('')
 const nfcStatusTone = ref<'success' | 'error' | ''>('')
@@ -165,6 +172,11 @@ const canWriteNfc = computed(() => {
   }
   return window.isSecureContext && 'NDEFReader' in window
 })
+
+type WebNfcWriter = {
+  write: (message: unknown) => Promise<void>
+  makeReadOnly?: () => Promise<void>
+}
 
 let searchDebounce: ReturnType<typeof setTimeout> | null = null
 
@@ -288,7 +300,7 @@ const writeCardToNfc = async (card: Card) => {
   }
 
   const NdefReader = (window as Window & {
-    NDEFReader?: new () => { write: (message: unknown) => Promise<void> }
+    NDEFReader?: new () => WebNfcWriter
   }).NDEFReader
 
   if (!NdefReader) {
@@ -310,8 +322,18 @@ const writeCardToNfc = async (card: Card) => {
       }],
     })
 
+    if (lockNfcAfterWrite.value) {
+      if (typeof writer.makeReadOnly !== 'function') {
+        throw new Error('makeReadOnly() indisponible dans ce navigateur.')
+      }
+
+      await writer.makeReadOnly()
+    }
+
     nfcStatusTone.value = 'success'
-    nfcStatus.value = `Tag NFC ecrit: ${card.title}`
+    nfcStatus.value = lockNfcAfterWrite.value
+      ? `Tag NFC ecrit et verrouille: ${card.title}`
+      : `Tag NFC ecrit: ${card.title}`
   } catch (error) {
     nfcStatusTone.value = 'error'
     nfcStatus.value = getNfcErrorMessage(error)
@@ -425,6 +447,21 @@ onBeforeUnmount(() => {
   gap: 0.3rem;
   font-size: 0.82rem;
   color: #cce2f4;
+}
+
+.card-search-panel__readonly-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  color: #cce2f4;
+  align-self: end;
+  padding-bottom: 0.35rem;
+}
+
+.card-search-panel__readonly-toggle input {
+  width: 1rem;
+  height: 1rem;
 }
 
 .card-search-panel__controls input,
