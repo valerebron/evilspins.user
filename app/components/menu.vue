@@ -74,12 +74,13 @@ const rootPages = computed(() => {
 .menu {
   width: 100%;
   position: fixed;
-  bottom: 0;
+  top: 0;
   display: flex;
   flex-direction: row;
   justify-content: center;
   padding: 24px 12px;
   z-index: 20;
+  background-color: rgba(255, 255, 255, 0.9);
 }
 
 .menu ul {

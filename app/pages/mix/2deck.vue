@@ -3,13 +3,13 @@
     <div class="mix-page__fader-glow" :style="faderGlowStyle" aria-hidden="true" />
     <section class="mix-page__decks">
       <div class="mix-page__deck-slot">
-        <button type="button" class="mix-page__deck-picker" @click="openDeckPicker('A')">Eject A</button>
         <MixDeckCard ref="deckARef" label="A" :card="deckA.card" :active="activeDeck === 'A'" />
+        <button type="button" class="mix-page__deck-picker" @click="openDeckPicker('A')">Eject A</button>
       </div>
 
       <div class="mix-page__deck-slot">
-        <button type="button" class="mix-page__deck-picker" @click="openDeckPicker('B')">Eject B</button>
         <MixDeckCard ref="deckBRef" label="B" :card="deckB.card" :active="activeDeck === 'B'" />
+        <button type="button" class="mix-page__deck-picker" @click="openDeckPicker('B')">Eject B</button>
       </div>
     </section>
 
@@ -428,7 +428,7 @@ onUnmounted(() => {
 
 .mix-page__deck-picker {
   position: absolute;
-  top: 8px;
+  bottom: 8px;
   left: 8px;
   z-index: 4;
   border: 1px solid #111;
