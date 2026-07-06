@@ -1,110 +1,96 @@
 <template>
   <main class="print-page">
     <header class="hero">
-      <div>
-        <p class="eyebrow">Impression cartes bancaire 85.60 x 53.98mm</p>
-        <h1>Generateur d'imposition recto-verso</h1>
-        <p class="subtitle">
-          10 cartes par feuille A4 paysage, bleed 3mm et export PDF precis pour l'impression duplex.
-        </p>
-      </div>
-
-      <div class="hero-actions">
-        <div class="stats">
-          <span>{{ selectedCount }} carte(s) selectionnee(s)</span>
-          <strong>{{ sheetCount }} feuille(s)</strong>
-        </div>
-        <button type="button" class="primary-btn" :disabled="selectedCount === 0 || isGenerating" @click="generatePdf">
-          {{ isGenerating ? 'Generation...' : 'Generer le PDF' }}
-        </button>
-      </div>
+      <p class="eyebrow">Impression cartes bancaire 85.60 x 53.98mm</p>
+      <h1>Generateur d'imposition recto-verso</h1>
+      <p class="subtitle">
+        Commence par rechercher et selectionner des cartes. L'apercu et la generation PDF apparaissent ensuite.
+      </p>
+      <button type="button" class="menu-open-btn" @click="isOptionsModalOpen = true">Options d'impression</button>
     </header>
 
-    <section class="toolbar">
-      <label>
-        Export
-        <select v-model="exportMode">
-          <option value="duplex">Recto-verso (alternance par feuille)</option>
-          <option value="separate">Faces separees (tous les rectos puis les versos)</option>
-        </select>
-      </label>
-
-      <label>
-        Alignement verso
-        <select v-model="backAlignment">
-          <option value="mirror">Miroir horizontal (duplex: retourner sur bord court)</option>
-          <option value="aligned">Aligne sans miroir</option>
-        </select>
-      </label>
-
-      <label>
-        Papier
-        <select v-model="paperFormat">
-          <option v-for="[formatId, format] in paperFormatEntries" :key="formatId" :value="formatId">
-            {{ format.label }}
-          </option>
-        </select>
-      </label>
-
-      <label class="checkbox-inline">
-        <input v-model="includeCutMarks" type="checkbox" />
-        Marques de coupe
-      </label>
-
-      <label class="checkbox-inline">
-        <input v-model="roundedFront" type="checkbox" />
-        Arrondis recto
-      </label>
-
-      <label>
-        Cartes/page
-        <select v-model.number="pageSize">
-          <option :value="10">10</option>
-          <option :value="20">20</option>
-          <option :value="30">30</option>
-          <option :value="50">50</option>
-          <option :value="100">100</option>
-        </select>
-      </label>
+    <section class="layout-grid">
+      <section class="search-panel">
+        <CardSearchPanel mode="embedded" pick-label="Ajouter / Retirer" :close-on-select="false"
+          @select="onSelectFromSearch" />
+      </section>
     </section>
 
-    <p class="print-hint">
-      PDF genere en {{ selectedPaperFormat.label }}. Pour conserver 85,60 x 53,98 mm apres decoupe, imprime a 100% sans
-      "Ajuster" ni "Adapter a la page".
-    </p>
+    <Teleport to="body">
+      <div v-if="isOptionsModalOpen" class="modal-overlay" role="presentation" @click.self="isOptionsModalOpen = false">
+        <section class="modal-surface" role="dialog" aria-modal="true" aria-label="Options d'impression">
+          <header class="modal-head">
+            <h2>Options d'impression</h2>
+            <button type="button" class="modal-close-btn" @click="isOptionsModalOpen = false">Fermer</button>
+          </header>
+
+          <div class="stats">
+            <span>{{ selectedCount }} carte(s) selectionnee(s)</span>
+            <strong>{{ sheetCount }} feuille(s)</strong>
+          </div>
+
+          <div class="toolbar">
+            <label>
+              Export
+              <select v-model="exportMode">
+                <option value="duplex">Recto-verso (alternance par feuille)</option>
+                <option value="separate">Faces separees (tous les rectos puis les versos)</option>
+              </select>
+            </label>
+
+            <label>
+              Alignement verso
+              <select v-model="backAlignment">
+                <option value="mirror">Miroir horizontal (duplex: retourner sur bord court)</option>
+                <option value="aligned">Aligne sans miroir</option>
+              </select>
+            </label>
+
+            <label>
+              Papier
+              <select v-model="paperFormat">
+                <option v-for="[formatId, format] in paperFormatEntries" :key="formatId" :value="formatId">
+                  {{ format.label }}
+                </option>
+              </select>
+            </label>
+
+            <label class="checkbox-inline">
+              <input v-model="includeCutMarks" type="checkbox" />
+              Marques de coupe
+            </label>
+
+            <label class="checkbox-inline">
+              <input v-model="roundedFront" type="checkbox" />
+              Arrondis recto
+            </label>
+          </div>
+
+          <p class="print-hint">
+            PDF genere en {{ selectedPaperFormat.label }}. Pour conserver 85,60 x 53,98 mm apres decoupe, imprime a
+            100% sans "Ajuster" ni "Adapter a la page".
+          </p>
+
+          <div class="modal-actions">
+            <button type="button" class="secondary-btn" :disabled="selectedCount === 0" @click="printStore.clear()">
+              Vider la selection
+            </button>
+          </div>
+        </section>
+      </div>
+    </Teleport>
 
     <p v-if="pdfError" class="error-banner">{{ pdfError }}</p>
 
-    <section class="layout-grid">
-      <CardSelector v-model:searchQuery="searchInput" v-model:displayMode="displayMode" v-model:page="page"
-        :cards="visibleCards" :pending="pending" :error-message="errorMessage" :total-pages="totalPages"
-        :total-items="totalItems" :selected-ids="selectedIds" @toggle-card="toggleSelection"
-        @toggle-page="togglePageSelection" />
-
-      <section class="preview-panel" aria-labelledby="preview-tabs">
-        <header class="preview-topbar">
-          <div id="preview-tabs" class="tabs" role="tablist" aria-label="Faces imprimees">
-            <button type="button" role="tab" :aria-selected="previewFace === 'front'"
-              :class="['tab-btn', { active: previewFace === 'front' }]" @click="previewFace = 'front'">
-              Recto
-            </button>
-            <button type="button" role="tab" :aria-selected="previewFace === 'back'"
-              :class="['tab-btn', { active: previewFace === 'back' }]" @click="previewFace = 'back'">
-              Verso
-            </button>
-          </div>
-
-          <div class="sheet-nav">
-            <button type="button" :disabled="currentSheet <= 1" @click="currentSheet -= 1">Prec.</button>
-            <span>Feuille {{ currentSheet }} / {{ sheetCount }}</span>
-            <button type="button" :disabled="currentSheet >= sheetCount" @click="currentSheet += 1">Suiv.</button>
-          </div>
-        </header>
-
-        <ImpositionPreview :cards="sheetCards" :face="previewFace" :scale="previewScale" :back-alignment="backAlignment"
-          :paper-format="paperFormat" :rounded-front="roundedFront" />
-      </section>
+    <section v-if="hasSelection" class="pdf-dock">
+      <button type="button" class="primary-btn pdf-dock-btn" :disabled="isGenerating" @click="generatePdf">
+        {{ isGenerating ? 'Generation...' : `Generer le PDF (${estimatedPdfPages} page${estimatedPdfPages > 1 ? 's' :
+          ''})` }}
+      </button>
     </section>
+
+    <p v-else class="empty-state">Selectionne au moins une carte depuis le panneau de recherche pour activer la
+      generation PDF.</p>
   </main>
 </template>
 
@@ -124,12 +110,10 @@ import {
   type PDFImage,
   type PDFPage,
 } from 'pdf-lib'
-import CardSelector from '~/components/Print/CardSelector.vue'
-import ImpositionPreview from '~/components/Print/ImpositionPreview.vue'
+import CardSearchPanel from '~/components/Search/CardSearchPanel.vue'
 import { usePrintCardsStore } from '~/stores/printCards'
 import { getYearColor } from '~/utils/colors'
 import {
-  A4_LANDSCAPE_MM,
   BLEED_MM,
   CARD_MM,
   CARDS_PER_SHEET,
@@ -147,27 +131,11 @@ import {
 } from '~/utils/print'
 import type { Card } from '~~/types/types'
 
-interface CardApiResponse {
-  data?: PrintCardItem[]
-  pagination?: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
-}
-
 definePageMeta({
   title: 'Print',
 })
 
 const printStore = usePrintCardsStore()
-
-const page = ref(1)
-const pageSize = ref(10)
-const searchInput = ref('')
-const searchQuery = ref('')
-const displayMode = ref<'grid' | 'list'>('grid')
 
 const exportMode = ref<'duplex' | 'separate'>('duplex')
 const backAlignment = ref<BackAlignmentMode>('mirror')
@@ -175,127 +143,46 @@ const paperFormat = ref<PaperFormatId>('a4')
 const includeCutMarks = ref(true)
 const roundedFront = ref(false)
 
-const previewFace = ref<'front' | 'back'>('front')
-const currentSheet = ref(1)
-const previewScale = ref(0.31)
-
 const isGenerating = ref(false)
 const pdfError = ref('')
-const isSearchModalOpen = ref(false)
+const isOptionsModalOpen = ref(false)
 
 const paperFormatEntries = Object.entries(PAPER_FORMATS)
 const selectedPaperFormat = computed(() => PAPER_FORMATS[paperFormat.value])
 const pageDimensions = computed<PaperDimensions>(() => getPaperDimensions(paperFormat.value))
 
-let searchDebounce: ReturnType<typeof setTimeout> | null = null
-
-watch(searchInput, (value) => {
-  if (searchDebounce) {
-    clearTimeout(searchDebounce)
-  }
-
-  searchDebounce = setTimeout(() => {
-    page.value = 1
-    searchQuery.value = value.trim().toLowerCase()
-  }, 220)
-})
-
-onBeforeUnmount(() => {
-  if (searchDebounce) {
-    clearTimeout(searchDebounce)
-  }
-})
-
-const { data, pending, error } = await useAsyncData<CardApiResponse>(
-  'print-cards',
-  async () => {
-    const normalizedSearch = searchQuery.value.trim()
-    const response = await $fetch<CardApiResponse>('/api/card', {
-      params: {
-        page: page.value,
-        limit: pageSize.value,
-        search: normalizedSearch || undefined,
-      },
-    })
-    return response
-  },
-  {
-    watch: [page, pageSize, searchQuery],
-    default: () => ({ data: [], pagination: { page: 1, limit: 30, total: 0, totalPages: 1 } }),
-  },
-)
-
-const cards = computed(() => data.value?.data || [])
-
-const visibleCards = computed(() => {
-  return cards.value
-})
-
-const totalItems = computed(() => {
-  return data.value?.pagination?.total || cards.value.length
-})
-
-const totalPages = computed(() => {
-  return Math.max(1, data.value?.pagination?.totalPages || 1)
-})
-
-watch(totalPages, (value) => {
-  if (page.value > value) {
-    page.value = value
-  }
-})
-
-const errorMessage = computed(() => {
-  return error.value ? 'Impossible de charger les cartes pour l\'impression.' : ''
-})
-
 const selectedCards = computed(() => printStore.selectedCards)
-const selectedIds = computed(() => printStore.selectedSlugs)
 const selectedCount = computed(() => printStore.selectedCount)
 const sheetCount = computed(() => getSheetCount(selectedCount.value))
+const hasSelection = computed(() => selectedCount.value > 0)
+const estimatedPdfPages = computed(() => {
+  const totalSheets = Math.ceil(selectedCount.value / CARDS_PER_SHEET)
+  return totalSheets * 2
+})
 
 watch(sheetCount, (count) => {
-  if (currentSheet.value > count) {
-    currentSheet.value = count
+  if (count < 1) {
+    pdfError.value = ''
   }
 })
-
-const sheetCards = computed(() => {
-  return getCardsForSheet(selectedCards.value, currentSheet.value - 1)
-})
-
-const toggleSelection = (card: PrintCardItem) => {
-  printStore.toggleCard(card)
-}
-
-const togglePageSelection = (checked: boolean) => {
-  if (checked) {
-    printStore.addMany(visibleCards.value)
-    return
-  }
-  printStore.removeMany(visibleCards.value.map((card) => card.slug))
-}
 
 const onSelectFromSearch = (card: Card) => {
   printStore.toggleCard(card as PrintCardItem)
 }
 
-const updatePreviewScale = () => {
-  if (window.matchMedia('(max-width: 1024px)').matches) {
-    previewScale.value = 0.23
-    return
-  }
-  previewScale.value = 0.7
-}
-
 onMounted(() => {
-  updatePreviewScale()
-  window.addEventListener('resize', updatePreviewScale)
+  window.addEventListener('keydown', onKeydown)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', updatePreviewScale)
+  window.removeEventListener('keydown', onKeydown)
 })
+
+const onKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && isOptionsModalOpen.value) {
+    isOptionsModalOpen.value = false
+  }
+}
 
 interface LoadedImage {
   image: PDFImage
@@ -303,78 +190,8 @@ interface LoadedImage {
   height: number
 }
 
-const imageCache = new Map<string, LoadedImage>()
 const backCompositeCache = new Map<string, LoadedImage>()
 const mediaCompositeCache = new Map<string, LoadedImage>()
-
-const blobToPng = async (blob: Blob): Promise<Uint8Array> => {
-  const bitmap = await createImageBitmap(blob)
-  const canvas = document.createElement('canvas')
-  canvas.width = bitmap.width
-  canvas.height = bitmap.height
-  const ctx = canvas.getContext('2d')
-
-  if (!ctx) {
-    throw new Error('Canvas indisponible pour convertir l image')
-  }
-
-  ctx.drawImage(bitmap, 0, 0)
-  const pngBlob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((result) => {
-      if (!result) {
-        reject(new Error('Conversion PNG echouee'))
-        return
-      }
-      resolve(result)
-    }, 'image/png')
-  })
-
-  return new Uint8Array(await pngBlob.arrayBuffer())
-}
-
-const svgBlobToPng = async (blob: Blob): Promise<Uint8Array> => {
-  const objectUrl = URL.createObjectURL(blob)
-
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const element = new Image()
-    element.onload = () => {
-      URL.revokeObjectURL(objectUrl)
-      resolve(element)
-    }
-    element.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      reject(new Error('Decodage SVG echoue'))
-    }
-    element.src = objectUrl
-  })
-
-  const width = img.naturalWidth || 1200
-  const height = img.naturalHeight || 1200
-
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-
-  if (!ctx) {
-    throw new Error('Canvas indisponible pour convertir le SVG')
-  }
-
-  ctx.clearRect(0, 0, width, height)
-  ctx.drawImage(img, 0, 0, width, height)
-
-  const pngBlob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((result) => {
-      if (!result) {
-        reject(new Error('Conversion SVG vers PNG echouee'))
-        return
-      }
-      resolve(result)
-    }, 'image/png')
-  })
-
-  return new Uint8Array(await pngBlob.arrayBuffer())
-}
 
 const fitCover = (boxWidth: number, boxHeight: number, imageWidth: number, imageHeight: number) => {
   const ratio = Math.max(boxWidth / imageWidth, boxHeight / imageHeight)
@@ -409,68 +226,6 @@ const hexToRgbColor = (hex: string) => {
   const g = parseInt(normalized.slice(2, 4), 16) / 255
   const b = parseInt(normalized.slice(4, 6), 16) / 255
   return rgb(r, g, b)
-}
-
-const loadPdfImage = async (doc: PDFDocument, url: string): Promise<LoadedImage | null> => {
-  if (imageCache.has(url)) {
-    return imageCache.get(url) as LoadedImage
-  }
-
-  try {
-    const isLocalAsset = url.startsWith('/')
-    const requestUrl = isLocalAsset ? url : `/api/print/image?url=${encodeURIComponent(url)}`
-    const response = await fetch(requestUrl)
-    if (!response.ok) {
-      console.warn('[print] image fetch failed', requestUrl, response.status)
-      return null
-    }
-
-    const contentType = (response.headers.get('content-type') || '').toLowerCase()
-    const blob = await response.blob()
-    const rawBuffer = new Uint8Array(await blob.arrayBuffer())
-    const lowerUrl = url.toLowerCase()
-
-    let image: PDFImage | null = null
-    const isSvg = contentType.includes('svg') || lowerUrl.endsWith('.svg')
-
-    try {
-      if (isSvg) {
-        image = await doc.embedPng(await svgBlobToPng(blob))
-      } else if (contentType.includes('jpeg') || contentType.includes('jpg') || lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg')) {
-        image = await doc.embedJpg(rawBuffer)
-      } else if (contentType.includes('png') || lowerUrl.endsWith('.png')) {
-        image = await doc.embedPng(rawBuffer)
-      } else {
-        image = await doc.embedPng(await blobToPng(blob))
-      }
-    } catch {
-      try {
-        image = await doc.embedPng(rawBuffer)
-      } catch {
-        try {
-          image = await doc.embedJpg(rawBuffer)
-        } catch {
-          image = await doc.embedPng(await blobToPng(blob))
-        }
-      }
-    }
-
-    if (!image) {
-      return null
-    }
-
-    const loaded: LoadedImage = {
-      image,
-      width: typeof image.width === 'number' ? image.width : 1,
-      height: typeof image.height === 'number' ? image.height : 1,
-    }
-
-    imageCache.set(url, loaded)
-    return loaded
-  } catch (error) {
-    console.warn('[print] unable to embed image, skipped', url, error)
-    return null
-  }
 }
 
 const getImageRequestUrl = (url: string) => {
@@ -1147,21 +902,19 @@ const generatePdf = async () => {
 <style scoped>
 .print-page {
   min-height: 100vh;
-  padding: clamp(1rem, 2.2vw, 2rem);
+  padding: clamp(1rem, 2.5vw, 2.2rem);
   color: #112237;
   display: grid;
-  gap: 1rem;
+  gap: 1.15rem;
 }
 
 .hero {
-  border: 1px solid #d5e2ee;
+  border: 1px solid #ceddea;
   border-radius: 1rem;
   padding: clamp(1rem, 2vw, 1.5rem);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  background: rgba(255, 255, 255, 0.92);
+  display: grid;
+  gap: 0.45rem;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(237, 245, 252, 0.95));
 }
 
 .eyebrow {
@@ -1179,26 +932,95 @@ const generatePdf = async () => {
 }
 
 .subtitle {
-  margin-top: 0.6rem;
+  margin-top: 0.3rem;
   color: #3d556c;
-  max-width: 68ch;
+  max-width: 70ch;
 }
 
-.print-hint {
-  margin-top: -0.25rem;
-  font-size: 0.92rem;
-  color: #47627e;
+.menu-open-btn {
+  border: 1px solid #b5cbdf;
+  border-radius: 0.62rem;
+  background: #ffffff;
+  color: #17344d;
+  font-weight: 700;
+  width: fit-content;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
 }
 
-.hero-actions {
+.layout-grid {
   display: grid;
-  justify-items: end;
-  gap: 0.7rem;
+  grid-template-columns: minmax(340px, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.search-panel {
+  border: 1px solid #d4e2ef;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.55rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(8, 15, 25, 0.5);
+  backdrop-filter: blur(3px);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.modal-surface {
+  width: min(560px, 100%);
+  max-height: min(82vh, 860px);
+  overflow: auto;
+  border: 1px solid #cfdeeb;
+  border-radius: 0.95rem;
+  background: #f8fbff;
+  padding: 1rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.modal-head h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #17344d;
+}
+
+.modal-close-btn {
+  border: 1px solid #c2d4e4;
+  border-radius: 0.55rem;
+  background: #ffffff;
+  color: #254965;
+  font-weight: 600;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .stats {
-  text-align: right;
+  border: 1px solid #d7e4ef;
+  border-radius: 0.7rem;
+  padding: 0.6rem 0.7rem;
+  background: #ffffff;
+  text-align: left;
   display: grid;
+  gap: 0.2rem;
   font-size: 0.88rem;
   color: #3e5c78;
 }
@@ -1211,7 +1033,8 @@ const generatePdf = async () => {
 .primary-btn {
   border: 0;
   border-radius: 0.7rem;
-  @apply bg-esyellow;
+  background: #f4d54b;
+  color: #132031;
   font-weight: 700;
   padding: 0.65rem 1rem;
   cursor: pointer;
@@ -1223,20 +1046,13 @@ const generatePdf = async () => {
 }
 
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
   gap: 0.75rem;
-  border: 1px solid #d4e0ec;
-  border-radius: 0.85rem;
-  background: rgba(255, 255, 255, 0.88);
-  padding: 0.75rem;
 }
 
 .toolbar label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+  display: grid;
+  gap: 0.35rem;
   font-size: 0.86rem;
   color: #3b5873;
 }
@@ -1250,7 +1066,30 @@ const generatePdf = async () => {
 }
 
 .checkbox-inline {
-  padding: 0.32rem 0.2rem;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.print-hint {
+  font-size: 0.88rem;
+  color: #47627e;
+  line-height: 1.35;
+}
+
+.secondary-btn {
+  border: 1px solid #c0d1e2;
+  border-radius: 0.55rem;
+  background: #ffffff;
+  color: #1f3d59;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .error-banner {
@@ -1261,94 +1100,52 @@ const generatePdf = async () => {
   padding: 0.6rem 0.75rem;
 }
 
-.layout-grid {
-  display: grid;
-  grid-template-columns: minmax(340px, 1fr) minmax(420px, 1.2fr);
-  gap: 1rem;
+.pdf-dock {
+  position: fixed;
+  right: clamp(0.75rem, 2vw, 1.6rem);
+  bottom: clamp(0.75rem, 2vw, 1.4rem);
+  z-index: 60;
 }
 
-.open-search-btn {
-  border: 1px solid #355673;
-  background: #0b1f35;
-  color: #eff5fb;
-  border-radius: 0.55rem;
-  padding: 0.5rem 0.85rem;
-  cursor: pointer;
-  width: fit-content;
+.pdf-dock-btn {
+  min-width: 280px;
+  box-shadow: 0 24px 44px rgba(10, 24, 40, 0.26);
 }
 
-.preview-panel {
-  display: grid;
-  gap: 0.7rem;
-}
-
-.preview-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.7rem;
-  flex-wrap: wrap;
-}
-
-.tabs {
-  display: inline-flex;
-  border: 1px solid #c7d7e6;
-  background: #ffffff;
-  border-radius: 0.65rem;
-  overflow: hidden;
-}
-
-.tab-btn {
-  border: 0;
-  background: transparent;
-  color: #3f5c79;
-  padding: 0.45rem 0.8rem;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.tab-btn.active {
-  background: #17344d;
-  color: #ffffff;
-}
-
-.sheet-nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: #3e5871;
-}
-
-.sheet-nav button {
-  border: 1px solid #bfd0e0;
-  background: #ffffff;
-  border-radius: 0.5rem;
-  padding: 0.3rem 0.6rem;
-  cursor: pointer;
-}
-
-.sheet-nav button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.empty-state {
+  border: 1px dashed #bfd0df;
+  border-radius: 0.8rem;
+  background: #f6fafe;
+  color: #3b5872;
+  padding: 0.85rem;
 }
 
 @media (max-width: 1240px) {
-  .layout-grid {
-    grid-template-columns: 1fr;
+  .pdf-dock-btn {
+    min-width: 250px;
+  }
+}
+
+@media (max-width: 900px) {
+  .pdf-dock {
+    right: 0.5rem;
+    left: 0.5rem;
+    bottom: 0.5rem;
   }
 
-  .open-search-btn {
+  .pdf-dock-btn {
     width: 100%;
+    min-width: 0;
   }
 }
 
 @media (max-width: 800px) {
-  .hero {
-    flex-direction: column;
+  .print-page {
+    padding: 0.75rem;
   }
 
-  .hero-actions {
-    justify-items: start;
+  .primary-btn {
+    width: 100%;
   }
 }
 
