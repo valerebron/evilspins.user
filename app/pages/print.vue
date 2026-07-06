@@ -64,6 +64,11 @@
               <input v-model="roundedFront" type="checkbox" />
               Arrondis recto
             </label>
+
+            <label class="checkbox-inline">
+              <input v-model="includeLaminationMargin" type="checkbox" />
+              Marges plastification 2 mm
+            </label>
           </div>
 
           <p class="print-hint">
@@ -82,10 +87,15 @@
 
     <p v-if="pdfError" class="error-banner">{{ pdfError }}</p>
 
-    <section v-if="hasSelection" class="pdf-dock">
+    <section class="deck-dock">
+      <PrintDeck :cards="selectedCards" :force-expanded="isPdfDockHovered" label="Deck impression"
+        @toggle-card="onToggleFromDeck" />
+    </section>
+
+    <section v-if="hasSelection" class="pdf-dock" @mouseenter="isPdfDockHovered = true"
+      @mouseleave="isPdfDockHovered = false">
       <button type="button" class="primary-btn pdf-dock-btn" :disabled="isGenerating" @click="generatePdf">
-        {{ isGenerating ? 'Generation...' : `Generer le PDF (${estimatedPdfPages} page${estimatedPdfPages > 1 ? 's' :
-          ''})` }}
+        {{ isGenerating ? 'Generation...' : `Generer le PDF (${selectedCount} carte${selectedCount > 1 ? 's' : ''})` }}
       </button>
     </section>
 
@@ -110,6 +120,7 @@ import {
   type PDFImage,
   type PDFPage,
 } from 'pdf-lib'
+import PrintDeck from '~/components/Print/Deck.vue'
 import CardSearchPanel from '~/components/Search/CardSearchPanel.vue'
 import { usePrintCardsStore } from '~/stores/printCards'
 import { getYearColor } from '~/utils/colors'
@@ -141,11 +152,13 @@ const exportMode = ref<'duplex' | 'separate'>('duplex')
 const backAlignment = ref<BackAlignmentMode>('mirror')
 const paperFormat = ref<PaperFormatId>('a4')
 const includeCutMarks = ref(true)
-const roundedFront = ref(false)
+const roundedFront = ref(true)
+const includeLaminationMargin = ref(true)
 
 const isGenerating = ref(false)
 const pdfError = ref('')
 const isOptionsModalOpen = ref(false)
+const isPdfDockHovered = ref(false)
 
 const paperFormatEntries = Object.entries(PAPER_FORMATS)
 const selectedPaperFormat = computed(() => PAPER_FORMATS[paperFormat.value])
@@ -166,8 +179,18 @@ watch(sheetCount, (count) => {
   }
 })
 
+watch(hasSelection, (has) => {
+  if (!has) {
+    isPdfDockHovered.value = false
+  }
+})
+
 const onSelectFromSearch = (card: Card) => {
   printStore.toggleCard(card as PrintCardItem)
+}
+
+const onToggleFromDeck = (card: PrintCardItem) => {
+  printStore.toggleCard(card)
 }
 
 onMounted(() => {
@@ -192,6 +215,32 @@ interface LoadedImage {
 
 const backCompositeCache = new Map<string, LoadedImage>()
 const mediaCompositeCache = new Map<string, LoadedImage>()
+
+// Final laminated card target remains CARD_MM, so we cut 2mm smaller before lamination.
+const PRE_LAMINATION_DELTA_MM = 2
+const PRE_LAMINATION_INSET_MM = PRE_LAMINATION_DELTA_MM / 2
+const PRE_LAMINATION_TRIM_MM = {
+  width: CARD_MM.width - PRE_LAMINATION_DELTA_MM,
+  height: CARD_MM.height - PRE_LAMINATION_DELTA_MM,
+} as const
+
+const getTrimInsetMm = () => {
+  return includeLaminationMargin.value ? PRE_LAMINATION_INSET_MM : 0
+}
+
+const getTrimDimensionsMm = () => {
+  if (!includeLaminationMargin.value) {
+    return {
+      width: CARD_MM.width,
+      height: CARD_MM.height,
+    }
+  }
+
+  return {
+    width: PRE_LAMINATION_TRIM_MM.width,
+    height: PRE_LAMINATION_TRIM_MM.height,
+  }
+}
 
 const fitCover = (boxWidth: number, boxHeight: number, imageWidth: number, imageHeight: number) => {
   const ratio = Math.max(boxWidth / imageWidth, boxHeight / imageHeight)
@@ -490,21 +539,25 @@ const drawCardFace = async (
   layer: 'bleed' | 'content',
   rounded = true,
 ) => {
-  const xTrim = slot.xMm
-  const yTrim = slot.yMm
+  const trimInset = getTrimInsetMm()
+  const trimDimensions = getTrimDimensionsMm()
+  const xTrim = slot.xMm + trimInset
+  const yTrim = slot.yMm + trimInset
+  const trimWidth = trimDimensions.width
+  const trimHeight = trimDimensions.height
   const backColorHex = getYearColor(Number(card.year) || 0)
   const backColor = hexToRgbColor(backColorHex)
 
   const xBleed = xTrim - BLEED_MM
   const yBleed = yTrim - BLEED_MM
-  const bleedWidth = CARD_MM.width + BLEED_MM * 2
-  const bleedHeight = CARD_MM.height + BLEED_MM * 2
+  const bleedWidth = trimWidth + BLEED_MM * 2
+  const bleedHeight = trimHeight + BLEED_MM * 2
 
   const insetMm = face === 'front' ? 2.6 : 0
   const mediaX = xTrim + insetMm
   const mediaY = yTrim + insetMm
-  const mediaWidth = CARD_MM.width - insetMm * 2
-  const mediaHeight = CARD_MM.height - insetMm * 2
+  const mediaWidth = trimWidth - insetMm * 2
+  const mediaHeight = trimHeight - insetMm * 2
 
   const clipAndDrawFill = (
     page: PDFPage,
@@ -732,6 +785,9 @@ const drawCutMarksOnPage = (
   slots: ReturnType<typeof getImpositionSlots>,
   pageDimensions: PaperDimensions,
 ) => {
+  const trimInset = getTrimInsetMm()
+  const trimDimensions = getTrimDimensionsMm()
+
   const offset = 0.8
   const printerSafeMarginMm = 5
   const stroke = rgb(0.1, 0.1, 0.1)
@@ -746,13 +802,23 @@ const drawCutMarksOnPage = (
     return Array.from(new Set(values.map((value) => value.toFixed(4)))).map(Number).sort((a, b) => a - b)
   }
 
-  const xCuts = dedupe(slots.flatMap((slot) => [slot.xMm, slot.xMm + CARD_MM.width]))
-  const yCutsMm = dedupe(slots.flatMap((slot) => [slot.yMm, slot.yMm + CARD_MM.height]))
+  const xCuts = dedupe(
+    slots.flatMap((slot) => [
+      slot.xMm + trimInset,
+      slot.xMm + trimInset + trimDimensions.width,
+    ]),
+  )
+  const yCutsMm = dedupe(
+    slots.flatMap((slot) => [
+      slot.yMm + trimInset,
+      slot.yMm + trimInset + trimDimensions.height,
+    ]),
+  )
 
-  const minX = Math.min(...slots.map((slot) => slot.xMm))
-  const maxX = Math.max(...slots.map((slot) => slot.xMm + CARD_MM.width))
-  const minY = Math.min(...slots.map((slot) => slot.yMm))
-  const maxY = Math.max(...slots.map((slot) => slot.yMm + CARD_MM.height))
+  const minX = Math.min(...slots.map((slot) => slot.xMm + trimInset))
+  const maxX = Math.max(...slots.map((slot) => slot.xMm + trimInset + trimDimensions.width))
+  const minY = Math.min(...slots.map((slot) => slot.yMm + trimInset))
+  const maxY = Math.max(...slots.map((slot) => slot.yMm + trimInset + trimDimensions.height))
 
   const topCutY = pageDimensions.height - minY
   const bottomCutY = pageDimensions.height - maxY
@@ -851,6 +917,11 @@ const generatePdf = async () => {
 
   isGenerating.value = true
   pdfError.value = ''
+
+  // Embedded PDFImage instances are bound to a specific PDFDocument.
+  // Reset caches before each generation to avoid reusing stale images.
+  backCompositeCache.clear()
+  mediaCompositeCache.clear()
 
   try {
     const doc = await PDFDocument.create()
@@ -1100,10 +1171,20 @@ const generatePdf = async () => {
   padding: 0.6rem 0.75rem;
 }
 
+.deck-dock {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 55;
+  width: min(1200px, calc(100vw - 1rem));
+}
+
 .pdf-dock {
   position: fixed;
-  right: clamp(0.75rem, 2vw, 1.6rem);
-  bottom: clamp(0.75rem, 2vw, 1.4rem);
+  left: 50%;
+  bottom: 0.85rem;
+  transform: translateX(-50%);
   z-index: 60;
 }
 
@@ -1127,15 +1208,19 @@ const generatePdf = async () => {
 }
 
 @media (max-width: 900px) {
+  .deck-dock {
+    width: calc(100vw - 1rem);
+  }
+
   .pdf-dock {
-    right: 0.5rem;
-    left: 0.5rem;
+    left: 50%;
+    right: auto;
     bottom: 0.5rem;
+    transform: translateX(-50%);
   }
 
   .pdf-dock-btn {
-    width: 100%;
-    min-width: 0;
+    min-width: 250px;
   }
 }
 
