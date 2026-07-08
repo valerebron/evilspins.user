@@ -209,7 +209,7 @@ const cleanupSpaceListener = () => {
 
 const pauseIfBackgrounded = () => {
   if (document.hidden) {
-    platineRef.value?.pause?.()
+    // platineRef.value?.pause?.()
   }
 }
 
