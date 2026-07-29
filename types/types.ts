@@ -1,7 +1,7 @@
 export interface Card {
   url_audio: string
-  url_image: string
-  blurhash: string
+  url_image?: string
+  blurhash?: string
   year: number
   month: string
   day: string
@@ -14,6 +14,26 @@ export interface Card {
   suit?: Suit
   rank?: Rank
   start?: number
+  box_position?: number
+  box_side?: string | null
+}
+
+export interface BoxSummary {
+  id: string
+  name: string
+  artists: Record<string, unknown>
+  cover_front?: string | null
+  cover_back?: string | null
+  card_count: number
+}
+
+export interface BoxDetails {
+  id: string
+  name: string
+  artists: Record<string, unknown>
+  cover_front?: string | null
+  cover_back?: string | null
+  cards: Card[]
 }
 
 export type Suit = '♠' | '♣' | '♦' | '♥'

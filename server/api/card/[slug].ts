@@ -1,3 +1,5 @@
+import { toAbsoluteMediaUrl, toDataApiUrl } from '../../utils/data-api'
+
 export default eventHandler(async (event) => {
   const slug = getRouterParam(event, 'slug')
 
@@ -9,7 +11,7 @@ export default eventHandler(async (event) => {
   }
 
   try {
-    const card = await $fetch(`${process.env.DATA_URL}api/card/slug/${slug}`)
+    const card = await $fetch<Record<string, unknown>>(toDataApiUrl(event, `/api/card/slug/${slug}`))
 
     if (!card) {
       throw createError({
@@ -18,12 +20,11 @@ export default eventHandler(async (event) => {
       })
     }
 
-    // Préfixer les URLs avec DATA_URL
     if (card.url_audio) {
-      card.url_audio = `${process.env.DATA_URL}${card.url_audio}`
+      card.url_audio = toAbsoluteMediaUrl(event, String(card.url_audio))
     }
     if (card.url_image) {
-      card.url_image = `${process.env.DATA_URL}${card.url_image}`
+      card.url_image = toAbsoluteMediaUrl(event, String(card.url_image))
     }
 
     return card

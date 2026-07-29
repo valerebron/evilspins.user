@@ -1,3 +1,5 @@
+import { toAbsoluteMediaUrl, toDataApiUrl } from '../../utils/data-api'
+
 export default defineEventHandler(async (event) => {
   try {
     const query = getQuery(event)
@@ -15,15 +17,16 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const response = await $fetch(`${process.env.DATA_URL}api/card?${params.toString()}`)
+    const response = await $fetch<{ data: Array<Record<string, unknown>>; pagination?: Record<string, unknown> }>(
+      toDataApiUrl(event, '/api/card', params),
+    )
 
-    // Préfixer les URLs avec DATA_URL pour chaque carte
-    const processedCards = response.data.map((card: any) => {
+    const processedCards = (response.data || []).map((card) => {
       if (card.url_audio) {
-        card.url_audio = `${process.env.DATA_URL}${card.url_audio}`
+        card.url_audio = toAbsoluteMediaUrl(event, String(card.url_audio))
       }
       if (card.url_image) {
-        card.url_image = `${process.env.DATA_URL}${card.url_image}`
+        card.url_image = toAbsoluteMediaUrl(event, String(card.url_image))
       }
       return card
     })

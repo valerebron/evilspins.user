@@ -37,6 +37,7 @@ const emit = defineEmits<{
 }>()
 
 const audioRef = ref<HTMLAudioElement | null>(null)
+const { resolveMediaUrl } = useMediaUrl()
 const isReady = ref(false)
 const isPlaying = ref(false)
 const currentTime = ref(0)
@@ -71,7 +72,7 @@ const setSourceFromCard = async () => {
     return
   }
 
-  audio.src = props.card.url_audio
+  audio.src = resolveMediaUrl(props.card.url_audio)
   audio.load()
   await nextTick()
 }

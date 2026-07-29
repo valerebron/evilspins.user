@@ -1,15 +1,18 @@
+import { toAbsoluteMediaUrl, toDataApiUrl } from '../../utils/data-api'
+
 export default defineEventHandler(async (event) => {
   try {
     const query = getQuery(event)
     const limit = parseInt(query.limit as string) || 10
-    const cards = await $fetch<any[]>(`${process.env.DATA_URL}api/card/latest?limit=${limit}`)
+    const params = new URLSearchParams({ limit: String(limit) })
+    const cards = await $fetch<Array<Record<string, unknown>>>(toDataApiUrl(event, '/api/card/latest', params))
 
-    const processedCards = cards.map((card: any) => {
+    const processedCards = cards.map((card) => {
       if (card.url_audio) {
-        card.url_audio = `${process.env.DATA_URL}${card.url_audio}`
+        card.url_audio = toAbsoluteMediaUrl(event, String(card.url_audio))
       }
       if (card.url_image) {
-        card.url_image = `${process.env.DATA_URL}${card.url_image}`
+        card.url_image = toAbsoluteMediaUrl(event, String(card.url_image))
       }
       return card
     })

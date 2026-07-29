@@ -70,6 +70,7 @@ const isPlaying = computed(() => Math.abs(Math.round(sampler.value?.currentSpeed
 const isReversed = computed(() => disc.value?.isReversed || false)
 const currentSpeed = computed(() => sampler.value?.currentSpeed || 0)
 const { requestWakeLock, releaseWakeLock } = useScreenWakeLock()
+const { resolveMediaUrl } = useMediaUrl()
 
 const canAutoplayNow = async () => {
   if (!sampler.value) return false
@@ -148,7 +149,7 @@ const loadAudio = async (card: Card) => {
   isLoadingTrack.value = true
   // console.log(disc.value)
   try {
-    await sampler.value.loadTrack(card.url_audio)
+    await sampler.value.loadTrack(resolveMediaUrl(card.url_audio))
     if (disc.value) {
       // console.log('[DISC] Set Duration', sampler.value.duration)
       disc.value.setDuration(sampler.value.duration)
