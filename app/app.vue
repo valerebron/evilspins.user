@@ -4,9 +4,9 @@
     <NuxtPage ref="pageContent" />
   </NuxtLayout>
 
-  <Transition name="splash">
+  <Transition name="splash" @after-leave="markSplashDone">
     <div v-if="showSplash" class="splash-screen" aria-label="Chargement" role="status">
-      <img src="/logo.svg" alt="Logo Evilspins" class="splash-logo">
+      <object class="splash-logo" data="/logo.svg" type="image/svg+xml" aria-label="Logo Evilspins" />
     </div>
   </Transition>
 </template>
@@ -20,6 +20,12 @@ const router = useRouter()
 const showSplash = ref(true)
 
 let splashTimeout: ReturnType<typeof setTimeout> | null = null
+
+const markSplashDone = () => {
+  const splashAwareWindow = window as Window & { __evilspinsSplashDone?: boolean }
+  splashAwareWindow.__evilspinsSplashDone = true
+  window.dispatchEvent(new CustomEvent('splash-finished'))
+}
 
 const resetFocus = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
@@ -44,6 +50,9 @@ const handleSearchShortcut = (event: KeyboardEvent) => {
 onMounted(() => {
   window.addEventListener('keydown', resetFocus)
   window.addEventListener('keydown', handleSearchShortcut)
+
+  const splashAwareWindow = window as Window & { __evilspinsSplashDone?: boolean }
+  splashAwareWindow.__evilspinsSplashDone = false
 
   // Affiche le logo au premier chargement, puis masque l'overlay.
   splashTimeout = setTimeout(() => {

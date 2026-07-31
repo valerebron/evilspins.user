@@ -251,6 +251,7 @@
     to="0"
     dur="1s"
     begin="2s"
+    fill="freeze"
   />
 
   <animate
@@ -260,6 +261,7 @@
     to="0"
     dur="1s"
     begin="2s"
+    fill="freeze"
   />
 
   <animate
@@ -269,6 +271,7 @@
     to="0"
     dur="1s"
     begin="2s"
+    fill="freeze"
   />
 
   <animate
@@ -278,6 +281,7 @@
     to="0"
     dur="1s"
     begin="2s"
+    fill="freeze"
   />
 
   <animate
@@ -287,6 +291,7 @@
     to="0"
     dur="1s"
     begin="2s"
+    fill="freeze"
   />
 
   <animate
@@ -296,6 +301,7 @@
     to="0"
     dur="1s"
     begin="2s"
+    fill="freeze"
   />
 
   <animate
@@ -305,6 +311,7 @@
     to="0"
     dur="1s"
     begin="2s"
+    fill="freeze"
   />
 
   <animate
@@ -314,6 +321,7 @@
     to="0"
     dur="1s"
     begin="2s"
+    fill="freeze"
   />
 
   <animate
@@ -323,6 +331,7 @@
     to="0"
     dur="1s"
     begin="2s"
+    fill="freeze"
   />
 
 </defs>

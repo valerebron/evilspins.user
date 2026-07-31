@@ -347,12 +347,14 @@ $card-mount-speed: 0.2s;
 
   aspect-ratio: 7/10;
   position: relative;
+  rotate: var(--card-rotation, 0deg);
   max-height: 100vmin;
   max-width: 100vmin;
   transition: all $card-transition-speed cubic-bezier(0.4, 0, 0.2, 1);
 
   &.open {
     aspect-ratio: 10/10;
+    rotate: 0deg;
     transition: all $card-transition-speed cubic-bezier(0.4, 0, 0.2, 1);
   }
 
