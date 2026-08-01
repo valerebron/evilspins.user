@@ -6,7 +6,6 @@
       <p v-else-if="error">{{ error }}</p>
       <template v-else-if="box">
         <h1>{{ box.name }}</h1>
-        <p>{{ box.cards.length }} cartes</p>
       </template>
     </header>
 
@@ -14,8 +13,8 @@
       <article v-for="side in boxSides" :key="side" class="box-page__face-block">
         <h2>Face {{ side }}</h2>
         <div class="box-page__grid">
-          <Card v-for="card in cardsBySide(side)" :key="card.esid" :card="card" :is-face-up="true"
-            :navigate-on-click="true" :show-play-button="false" />
+          <Card v-for="card in cardsBySide(side)" :key="card.esid" :card="card" :is-face-up="false"
+            :back-color="box?.color?.[side] || null" :navigate-on-click="true" :show-play-button="false" />
         </div>
       </article>
     </section>
@@ -32,17 +31,7 @@ const baseBoxId = computed(() => boxId.replace(/[AB]$/, ''))
 const box = computed(() => boxStore.boxById[baseBoxId.value] || null)
 
 const boxSides = computed(() => {
-  const sides = new Set<string>()
-  for (const card of box.value?.cards ?? []) {
-    if (card.box_side === 'A' || card.box_side === 'B') {
-      sides.add(card.box_side)
-    }
-  }
-
-  const orderedSides = Array.from(sides)
-  return requestedFace.value === 'B'
-    ? [...orderedSides.filter(side => side === 'B'), ...orderedSides.filter(side => side !== 'B')]
-    : [...orderedSides.filter(side => side === 'A'), ...orderedSides.filter(side => side !== 'A')]
+  return [requestedFace.value]
 })
 
 const cardsBySide = (side: string) => {

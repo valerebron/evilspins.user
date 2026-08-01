@@ -38,7 +38,7 @@
         class="face-down z-10 p-[6%] bg-opacity-10 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden select-none">
         <figure class="cover">
           <PlayButton :is-loading="isLoading" />
-          <img src="/face-down.svg" class="cover-image" :style="{ backgroundColor: cardColor }" draggable="false" />
+          <img :src="faceDownImageSrc" class="cover-image" :style="{ backgroundColor: cardColor }" draggable="false" />
         </figure>
       </footer>
     </div>
@@ -49,14 +49,17 @@
 import type { Card } from '~~/types/types'
 
 const emit = defineEmits(['click'])
+const route = useRoute()
 
 const props = withDefaults(defineProps<{
   card: Card;
+  backColor?: string | null;
   isFaceUp?: boolean;
   isLoading?: boolean;
   role?: string;
   tabindex?: string | number;
 }>(), {
+  backColor: null,
   isFaceUp: false,
   role: 'button',
   tabindex: '0'
@@ -64,7 +67,9 @@ const props = withDefaults(defineProps<{
 
 import { getYearColor } from '~/utils/colors'
 
-const cardColor = computed(() => getYearColor(props.card.year || 0))
+const cardColor = computed(() => props.backColor || getYearColor(props.card.year || 0))
+const isBoxRoute = computed(() => route.path.startsWith('/box'))
+const faceDownImageSrc = computed(() => isBoxRoute.value ? '/face-down-tarot.svg' : '/face-down.svg')
 </script>
 
 <style lang="scss">

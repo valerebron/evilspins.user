@@ -18,10 +18,17 @@ export interface Card {
   box_side?: string | null
 }
 
+export interface BoxFaceColorMap {
+  A?: string
+  B?: string
+  [side: string]: string | undefined
+}
+
 export interface BoxSummary {
   id: string
   name: string
   artists: Record<string, unknown>
+  color?: BoxFaceColorMap
   cover_front?: string | null
   cover_back?: string | null
   card_count: number
@@ -31,6 +38,7 @@ export interface BoxDetails {
   id: string
   name: string
   artists: Record<string, unknown>
+  color?: BoxFaceColorMap
   cover_front?: string | null
   cover_back?: string | null
   cards: Card[]

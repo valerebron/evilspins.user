@@ -2,7 +2,7 @@
   <section class="card text-center"
     :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted, 'show-play-button': showPlayButton }">
     <CardElement :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
-      :is-loading="isLoading" />
+      :is-loading="isLoading" :back-color="props.backColor" />
     <Platine v-if="isPlatineMounted" ref="platineRef" :card="card" :active="isOpen"
       :class="{ 'fading-out': isPlatineFading }" @loaded="onTrackLoaded" @finishPlaying="closePlatine"
       v-show="isOpen || isPlatineFading" />
@@ -16,6 +16,7 @@ import CardElement from './CardElement.vue'
 
 const props = defineProps<{
   card: Card,
+  backColor?: string | null,
   isFaceUp?: boolean,
   navigateOnClick?: boolean,
   autoplay?: boolean,

@@ -20,8 +20,8 @@
                 <div v-if="index === 0 && coverFrontUrl" class="stacked-card-cover stacked-card-cover--front">
                   <img class="stacked-card-cover__image" :src="coverFrontUrl" alt="box front cover" draggable="false" />
                 </div>
-                <card v-else-if="index === 0" :card="item" :is-face-up="true" :navigate-on-click="true"
-                  :show-play-button="false" />
+                <card v-else-if="index === 0" :card="item" :back-color="activeFaceColor" :is-face-up="true"
+                  :navigate-on-click="true" :show-play-button="false" />
                 <BoxBlurhashCard v-else :blurhash="item.blurhash" :card-year="item.year" :is-face-up="true" />
                 <div v-if="index === 0 && selectedMode === 'selected'" class="stacked-card-play-overlay">
                   <PlayButton />
@@ -31,8 +31,8 @@
                 <div v-if="index === lastCardIndex && coverBackUrl" class="stacked-card-cover stacked-card-cover--back">
                   <img class="stacked-card-cover__image" :src="coverBackUrl" alt="box back cover" draggable="false" />
                 </div>
-                <card v-else-if="index === 0" :card="item" :is-face-up="false" :navigate-on-click="true"
-                  :show-play-button="false" />
+                <card v-else-if="index === 0" :card="item" :back-color="activeFaceColor" :is-face-up="false"
+                  :navigate-on-click="true" :show-play-button="false" />
                 <BoxBlurhashCard v-else :blurhash="item.blurhash" :card-year="item.year" :is-face-up="false" />
               </div>
             </div>
@@ -100,6 +100,7 @@ const activeCompilationSide = computed<CompilationSide>(() => {
 
   return 'A'
 })
+const activeFaceColor = computed(() => props.box?.color?.[activeCompilationSide.value] || null)
 const selectedSide = computed<BoxSide>(() => {
   if (selectedMode.value === 'stored') return 'top'
   return 'front'
