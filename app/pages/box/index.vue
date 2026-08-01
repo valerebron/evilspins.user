@@ -134,7 +134,6 @@ const handleTrackStarted = (card: CardType) => {
 
   playbackStartSlug.value = slug
   playbackIsPlaying.value = true
-  void scrollToPlaybackCard(slug)
 }
 
 const handlePlaybackStateChanged = (payload: { card: CardType, isPlaying: boolean }) => {
