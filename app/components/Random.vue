@@ -1,5 +1,5 @@
 <template>
-  <Card v-if="card" :key="card?.slug" :card="card" />
+  <Card v-if="card" :key="card?.slug" :card="card" click-behavior="self-play" />
 </template>
 
 <script setup lang="ts">

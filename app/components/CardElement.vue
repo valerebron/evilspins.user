@@ -1,9 +1,9 @@
 <template>
   <article :role="props.role" :class="[
     'card-element cursor-pointer',
-    isFaceUp ? 'face-up' : 'face-down'
-  ]" :tabindex="props.tabindex" :aria-disabled="false" @click="$emit('click', $event)"
-    @keydown.enter="$emit('click', $event)">
+    isFaceUp ? 'face-up' : 'face-down',
+    props.isDisabled ? 'is-disabled' : ''
+  ]" :tabindex="props.tabindex" :aria-disabled="props.isDisabled" @click="onCardClick" @keydown.enter="onCardEnter">
     <div class="flip-inner" ref="cardElement">
       <!-- Face-Up -->
       <main
@@ -56,11 +56,13 @@ const props = withDefaults(defineProps<{
   backColor?: string | null;
   isFaceUp?: boolean;
   isLoading?: boolean;
+  isDisabled?: boolean;
   role?: string;
   tabindex?: string | number;
 }>(), {
   backColor: null,
   isFaceUp: false,
+  isDisabled: false,
   role: 'button',
   tabindex: '0'
 })
@@ -70,6 +72,24 @@ import { getYearColor } from '~/utils/colors'
 const cardColor = computed(() => props.backColor || getYearColor(props.card.year || 0))
 const isBoxRoute = computed(() => route.path.startsWith('/box'))
 const faceDownImageSrc = computed(() => isBoxRoute.value ? '/face-down-tarot.svg' : '/face-down.svg')
+
+const onCardClick = (event: MouseEvent) => {
+  if (props.isDisabled) {
+    event.preventDefault()
+    return
+  }
+
+  emit('click', event)
+}
+
+const onCardEnter = (event: KeyboardEvent) => {
+  if (props.isDisabled) {
+    event.preventDefault()
+    return
+  }
+
+  emit('click', event)
+}
 </script>
 
 <style lang="scss">
@@ -199,6 +219,19 @@ const faceDownImageSrc = computed(() => isBoxRoute.value ? '/face-down-tarot.svg
   .face-down:active {
     .play-button {
       @apply scale-90;
+    }
+  }
+
+  &.is-disabled {
+    cursor: default;
+
+    .cover {
+      cursor: default;
+    }
+
+    .play-button {
+      opacity: 0 !important;
+      pointer-events: none;
     }
   }
 }

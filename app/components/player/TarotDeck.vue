@@ -1,5 +1,5 @@
 <template>
-  <main class="tarot-player">
+  <main class="tarot-player" :class="{ 'tarot-player--embedded': props.embedded }">
     <section class="tarot-player__deck-stage">
       <div class="tarot-player__deck" :class="{ 'is-active': activeDeck === 'A' }" v-show="activeDeck === 'A'">
         <MixDeckCard ref="deckARef" label="A" :card="deckA.card" :active="activeDeck === 'A'" />
@@ -23,12 +23,18 @@ import MixDeckCard from '~/components/MixDeckCard.vue'
 const props = defineProps<{
   boxId: string
   startSlug?: string
+  embedded?: boolean
+}>()
+
+const emit = defineEmits<{
+  'track-started': [card: Card]
 }>()
 
 const SWITCH_GUARD_SECONDS = 0.18
 const TRACK_CHECK_INTERVAL_MS = 80
 
 const boxStore = useBoxStore()
+const { markCardPlayedToEnd } = usePersistentCardState()
 
 const deckARef = ref<InstanceType<typeof MixDeckCard> | null>(null)
 const deckBRef = ref<InstanceType<typeof MixDeckCard> | null>(null)
@@ -48,6 +54,23 @@ const onKeyDown = async (event: KeyboardEvent) => {
   const target = event.target as HTMLElement | null
   const tagName = target?.tagName?.toLowerCase()
   if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) {
+    return
+  }
+
+  if (event.code === 'Space' || event.key === ' ') {
+    event.preventDefault()
+
+    if (autoplayBlocked.value) {
+      await resumePlayback()
+      return
+    }
+
+    const activeRef = getDeckRef(activeDeck.value)
+    if (!activeRef) {
+      return
+    }
+
+    await activeRef.togglePlay?.()
     return
   }
 
@@ -156,6 +179,9 @@ const startPlayback = async () => {
   activeDeck.value = 'A'
   const didPlay = await deckARef.value?.play(0)
   autoplayBlocked.value = !didPlay
+  if (didPlay && deckA.card) {
+    emit('track-started', deckA.card)
+  }
 }
 
 const switchDeck = async () => {
@@ -186,7 +212,16 @@ const switchDeck = async () => {
     return
   }
 
+  const incomingCard = toDeck === 'A' ? deckA.card : deckB.card
+  if (incomingCard) {
+    emit('track-started', incomingCard)
+  }
+
   // No crossfader: switch source directly once incoming deck starts.
+  const outgoingCard = fromDeck === 'A' ? deckA.card : deckB.card
+  if (outgoingCard?.slug) {
+    markCardPlayedToEnd(outgoingCard.slug)
+  }
   fromRef.unload()
   activeDeck.value = toDeck
 
@@ -221,6 +256,12 @@ const resumePlayback = async () => {
 
   const didPlay = await activeRef.resume()
   autoplayBlocked.value = !didPlay
+  if (didPlay) {
+    const activeCard = activeDeck.value === 'A' ? deckA.card : deckB.card
+    if (activeCard) {
+      emit('track-started', activeCard)
+    }
+  }
 }
 
 onMounted(async () => {
@@ -254,10 +295,20 @@ onUnmounted(() => {
   padding: 12px;
 }
 
+.tarot-player--embedded {
+  height: 100%;
+  padding: 0;
+}
+
 .tarot-player__deck-stage {
   width: min(94svw, 94svh);
   height: min(94svw, 94svh);
   position: relative;
+}
+
+.tarot-player--embedded .tarot-player__deck-stage {
+  width: min(100%, 90svh);
+  height: min(100%, 90svh);
 }
 
 .tarot-player__deck {

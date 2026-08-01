@@ -1,10 +1,11 @@
 <template>
   <section class="card text-center"
-    :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted, 'show-play-button': showPlayButton }">
+    :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted, 'show-play-button': showPlayButton, 'is-disabled': isDisabled }">
     <CardElement :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
-      :is-loading="isLoading" :back-color="props.backColor" />
+      :is-loading="isLoading" :back-color="props.backColor" :is-disabled="isDisabled"
+      :class="{ 'current-card': props.isCurrent }" />
     <Platine v-if="isPlatineMounted" ref="platineRef" :card="card" :active="isOpen"
-      :class="{ 'fading-out': isPlatineFading }" @loaded="onTrackLoaded" @finishPlaying="closePlatine"
+      :class="{ 'fading-out': isPlatineFading }" @loaded="onTrackLoaded" @finishPlaying="onFinishPlaying"
       v-show="isOpen || isPlatineFading" />
   </section>
 </template>
@@ -19,14 +20,18 @@ const props = defineProps<{
   card: Card,
   backColor?: string | null,
   isFaceUp?: boolean,
+  isCurrent?: boolean,
+  clickBehavior?: 'flip-only' | 'self-play' | 'external-player',
   navigateOnClick?: boolean,
   navigateTarget?: string,
   autoplay?: boolean,
   showPlayButton?: boolean,
+  disabled?: boolean,
 }>()
 
-const emit = defineEmits(['open', 'close'])
+const emit = defineEmits(['open', 'close', 'play-request', 'flip'])
 const { isSplashDone, waitForSplashDone } = useSplashScreen()
+const { markCardFlipped, markCardPlayedToEnd } = usePersistentCardState()
 
 const isPlatineMounted = ref(false)
 const isOpen = ref(false)
@@ -104,14 +109,46 @@ const CARD_TRANSITION_DURATION = 1050
 const CARD_OTHERS_CLOSE_DELAY = CARD_TRANSITION_DURATION
 
 const cardId = computed(() => props.card.slug)
+const clickBehavior = computed(() => props.clickBehavior ?? 'flip-only')
+const isSelfPlayMode = computed(() => clickBehavior.value === 'self-play')
+const isDisabled = computed(() => Boolean(props.disabled))
+
+const revealCardIfNeeded = () => {
+  if (isFaceUp.value) {
+    return
+  }
+
+  isFaceUp.value = true
+  markCardFlipped(cardId.value)
+  emit('flip', props.card)
+}
 
 const shouldClose = computed(() => {
+  if (!isSelfPlayMode.value) {
+    return false
+  }
+
   return openCardId.value !== null && openCardId.value !== cardId.value
 })
 
 const clickOnCard = async () => {
+  if (isDisabled.value) {
+    return
+  }
+
   if (props.navigateOnClick) {
     navigateTo(props.navigateTarget || `/card/${props.card.slug}?autoplay=true`)
+    return
+  }
+
+  revealCardIfNeeded()
+
+  if (clickBehavior.value === 'external-player') {
+    emit('play-request', props.card)
+    return
+  }
+
+  if (!isSelfPlayMode.value) {
     return
   }
 
@@ -152,6 +189,7 @@ const clickOnCard = async () => {
 
 const onTrackLoaded = async () => {
   isFaceUp.value = true
+  markCardFlipped(cardId.value)
 
   // On laisse un peu de temps pour l'animation face-up,
   // puis on attend explicitement que les autres cartes aient commencé leur disparition
@@ -174,6 +212,11 @@ const onTrackLoaded = async () => {
   document.title = `${artist} - ${props.card.title}`
   window.history.pushState({}, '', `/card/${props.card.slug}`)
   isLoading.value = false
+}
+
+const onFinishPlaying = () => {
+  markCardPlayedToEnd(cardId.value)
+  closePlatine()
 }
 
 const closePlatine = () => {
@@ -246,6 +289,10 @@ const pauseOnWindowBlur = () => {
 // Quand une autre carte devient active (via le state global), on met en pause
 // celle-ci pour éviter que l'audio continue en arrière-plan.
 watch(shouldClose, (should) => {
+  if (!isSelfPlayMode.value) {
+    return
+  }
+
   if (should && isOpen.value) {
     platineRef.value?.pause?.()
     isOpen.value = false
@@ -253,6 +300,11 @@ watch(shouldClose, (should) => {
 })
 
 watch(isOpen, (open) => {
+  if (!isSelfPlayMode.value) {
+    cleanupSpaceListener()
+    return
+  }
+
   if (open) {
     openCard(cardId.value)
     // Quand cette carte devient active, on prend le contrôle du Space
@@ -264,7 +316,7 @@ watch(isOpen, (open) => {
 
 // Auto-play logic when autoplay prop is true
 watch(() => props.autoplay, async (autoplay) => {
-  if (!autoplay || isPlatineMounted.value) {
+  if (!isSelfPlayMode.value || !autoplay || isPlatineMounted.value) {
     return
   }
 
@@ -282,6 +334,10 @@ watch(() => props.autoplay, async (autoplay) => {
 }, { immediate: true })
 
 watch(openCardId, (id) => {
+  if (!isSelfPlayMode.value) {
+    return
+  }
+
   // si aucune carte n’est ouverte → on force fermeture locale
   if (!id && isOpen.value) {
     closePlatine()
@@ -295,6 +351,10 @@ watch(openCardId, (id) => {
 })
 
 onMounted(() => {
+  if (!isSelfPlayMode.value) {
+    return
+  }
+
   window.addEventListener('card-close-request', closePlatine)
   document.addEventListener('visibilitychange', pauseIfBackgrounded)
   window.addEventListener('pagehide', pauseOnPageHide)
@@ -309,6 +369,10 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (!isSelfPlayMode.value) {
+    return
+  }
+
   window.removeEventListener('card-close-request', closePlatine)
   document.removeEventListener('visibilitychange', pauseIfBackgrounded)
   window.removeEventListener('pagehide', pauseOnPageHide)

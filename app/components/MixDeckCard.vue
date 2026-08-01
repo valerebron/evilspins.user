@@ -5,7 +5,7 @@
 
     <Platine v-if="card && isPlatineMounted" :key="`platine-${card.slug}`" ref="platineRef" :card="card"
       :active="active" class="mix-deck__platine" :class="{ 'mix-deck__platine--visible': isOpen }"
-      @loaded="onTrackLoaded" />
+      @loaded="onTrackLoaded" @finishPlaying="onFinishPlaying" />
   </section>
 </template>
 
@@ -26,6 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const platineRef = ref<InstanceType<typeof Platine> | null>(null)
+const { markCardFlipped, markCardPlayedToEnd } = usePersistentCardState()
 
 const isFaceUp = ref(false)
 const isOpen = ref(false)
@@ -72,7 +73,21 @@ const waitUntilReady = (timeoutMs = 12000): Promise<boolean> => {
 
 const play = async (position = 0, withAcceleration = true) => {
   if (!platineRef.value) return false
-  return await platineRef.value.play(position, withAcceleration)
+  const started = await platineRef.value.play(position, withAcceleration)
+  if (started && props.card?.slug) {
+    markCardFlipped(props.card.slug)
+  }
+
+  return started
+}
+
+const onFinishPlaying = () => {
+  if (!props.card?.slug) {
+    return
+  }
+
+  markCardFlipped(props.card.slug)
+  markCardPlayedToEnd(props.card.slug)
 }
 
 const resume = async () => {
@@ -106,6 +121,15 @@ const jumpToNearEnd = async (secondsBeforeEnd = 5) => {
   return await platineRef.value.jumpToNearEnd?.(secondsBeforeEnd)
 }
 
+const togglePlay = async () => {
+  if (!platineRef.value) {
+    return false
+  }
+
+  await platineRef.value.togglePlay?.()
+  return true
+}
+
 watch(() => props.card, async () => {
   prepareVisualState()
   await nextTick()
@@ -115,6 +139,7 @@ defineExpose({
   waitUntilReady,
   play,
   resume,
+  togglePlay,
   pause,
   jumpToNearEnd,
   unload,

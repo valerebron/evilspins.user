@@ -21,7 +21,6 @@
                   <img class="stacked-card-cover__image" :src="coverFrontUrl" alt="box front cover" draggable="false" />
                 </div>
                 <card v-else-if="index === 0" :card="item" :back-color="activeFaceColor" :is-face-up="true"
-                  :navigate-on-click="true" :navigate-target="getBoxPlaybackTarget(item.slug)"
                   :show-play-button="false" />
                 <BoxBlurhashCard v-else :blurhash="item.blurhash" :card-year="item.year" :is-face-up="true" />
                 <div v-if="index === 0 && selectedMode === 'selected'" class="stacked-card-play-overlay">
@@ -33,7 +32,6 @@
                   <img class="stacked-card-cover__image" :src="coverBackUrl" alt="box back cover" draggable="false" />
                 </div>
                 <card v-else-if="index === 0" :card="item" :back-color="activeFaceColor" :is-face-up="false"
-                  :navigate-on-click="true" :navigate-target="getBoxPlaybackTarget(item.slug)"
                   :show-play-button="false" />
                 <BoxBlurhashCard v-else :blurhash="item.blurhash" :card-year="item.year" :is-face-up="false" />
               </div>
@@ -65,6 +63,9 @@ type CompilationSide = 'A' | 'B'
 
 const isAnimating = ref(false)
 const BASE_ORIENTATION = 270
+const DEFAULT_SELECTED_SPIN_ANGLE = -35
+const FULL_TURN_DEGREES = 360
+const HALF_TURN_DEGREES = 180
 const SIDE_SWITCH_ENERGY_THRESHOLD = 0.16
 const SIDE_SWITCH_MIN_DRAG_DISTANCE = 140
 const faceDimensions: Record<BoxSide, { widthFactor: number, heightFactor: number }> = {
@@ -172,25 +173,40 @@ const stackedCards = computed(() => {
 })
 const lastCardIndex = computed(() => Math.max(0, stackedCards.value.length - 1))
 
+const getNearestEquivalentAngle = (currentAngle: number, baseAngle: number) => {
+  const turns = Math.round((currentAngle - baseAngle) / FULL_TURN_DEGREES)
+  return baseAngle + turns * FULL_TURN_DEGREES
+}
+
+const normalizeAngleDelta = (delta: number) => {
+  return ((delta + HALF_TURN_DEGREES) % FULL_TURN_DEGREES + FULL_TURN_DEGREES) % FULL_TURN_DEGREES - HALF_TURN_DEGREES
+}
+
 const switchCompilationSideFromGesture = (dragDeltaX: number) => {
   if (selectedMode.value !== 'selected') return
-  if (dragDistance.value < SIDE_SWITCH_MIN_DRAG_DISTANCE) return
-  if (Math.abs(spinVelocity.value) < SIDE_SWITCH_ENERGY_THRESHOLD) return
+  if (dragDistance.value < SIDE_SWITCH_MIN_DRAG_DISTANCE) return false
+  if (Math.abs(spinVelocity.value) < SIDE_SWITCH_ENERGY_THRESHOLD) return false
+
+  let switched = false
 
   // Right swipe: A -> B
   if (dragDeltaX > 0) {
     if (requestedCompilationSide.value !== 'B' && availableCompilationSides.value.has('B')) {
       requestedCompilationSide.value = 'B'
+      switched = true
     }
-    return
+    return switched
   }
 
   // Left swipe: B -> A
   if (dragDeltaX < 0) {
     if (requestedCompilationSide.value === 'B' && availableCompilationSides.value.has('A')) {
       requestedCompilationSide.value = 'A'
+      switched = true
     }
   }
+
+  return switched
 }
 
 const requestToggleSelection = () => {
@@ -200,20 +216,6 @@ const requestToggleSelection = () => {
   }
 
   emit('toggle-select', activeCompilationSide.value)
-}
-
-const getBoxPlaybackTarget = (slug: string) => {
-  const boxId = props.box?.id
-  if (!boxId) {
-    return `/card/${slug}?autoplay=true`
-  }
-
-  const params = new URLSearchParams({
-    box: `${boxId}${activeCompilationSide.value}`,
-    start: slug,
-  })
-
-  return `/mix/tarot?${params.toString()}`
 }
 
 const stopSpinInertia = () => {
@@ -226,9 +228,14 @@ const stopSpinInertia = () => {
   spinVelocity.value = 0
 }
 
-const startSpinInertia = () => {
+const startSpinInertia = (settleToDefaultAxis = false) => {
   if (selectedMode.value !== 'selected') return
-  if (Math.abs(spinVelocity.value) < 0.01) return
+
+  const settleTarget = settleToDefaultAxis
+    ? getNearestEquivalentAngle(spinAngle.value, DEFAULT_SELECTED_SPIN_ANGLE)
+    : null
+
+  if (Math.abs(spinVelocity.value) < 0.01 && !settleTarget) return
 
   isSpinInertiaActive.value = true
   let lastFrameTime = performance.now()
@@ -241,7 +248,24 @@ const startSpinInertia = () => {
     spinAngle.value += spinVelocity.value * elapsed
     spinVelocity.value *= Math.pow(friction, elapsed / 16.67)
 
+    if (settleTarget !== null && Math.abs(spinVelocity.value) < 0.03) {
+      // Recalage plus lent, en suivant toujours le chemin angulaire le plus court.
+      const settleBlend = 1 - Math.pow(0.93, elapsed / 16.67)
+      const shortestDelta = normalizeAngleDelta(settleTarget - spinAngle.value)
+      spinAngle.value += shortestDelta * settleBlend
+
+      if (Math.abs(shortestDelta) < 0.2 && Math.abs(spinVelocity.value) < 0.003) {
+        spinAngle.value += shortestDelta
+        stopSpinInertia()
+        return
+      }
+    }
+
     if (Math.abs(spinVelocity.value) < 0.0025) {
+      if (settleTarget !== null) {
+        const shortestDelta = normalizeAngleDelta(settleTarget - spinAngle.value)
+        spinAngle.value += shortestDelta
+      }
       stopSpinInertia()
       return
     }
@@ -300,14 +324,14 @@ const onSpinPointerUp = (event: PointerEvent) => {
   activePointerId.value = null
   isSpinDragging.value = false
   const dragDeltaX = event.clientX - dragStartX.value
-  switchCompilationSideFromGesture(dragDeltaX)
+  const switchedSide = switchCompilationSideFromGesture(dragDeltaX)
   dragDistance.value = 0
-  startSpinInertia()
+  startSpinInertia(switchedSide)
 }
 
 watch(selectedMode, (mode) => {
   if (mode === 'selected') {
-    spinAngle.value = -35
+    spinAngle.value = DEFAULT_SELECTED_SPIN_ANGLE
     return
   }
 

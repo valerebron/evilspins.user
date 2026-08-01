@@ -1,5 +1,6 @@
 <template>
-  <Card v-if="card" :card="card" :is-face-up="isFaceUp" :autoplay="autoplay" :show-play-button="showPlayButton" />
+  <Card v-if="card" :card="card" :is-face-up="isFaceUp" :autoplay="autoplay" :show-play-button="showPlayButton"
+    click-behavior="self-play" />
 </template>
 
 <script setup lang="ts">
