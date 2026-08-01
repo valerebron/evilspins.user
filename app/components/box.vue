@@ -52,7 +52,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (event: 'toggle-select'): void
+  (event: 'toggle-select', face: CompilationSide): void
 }>()
 
 const { resolveMediaUrl } = useMediaUrl()
@@ -196,7 +196,7 @@ const requestToggleSelection = () => {
     return
   }
 
-  emit('toggle-select')
+  emit('toggle-select', activeCompilationSide.value)
 }
 
 const stopSpinInertia = () => {

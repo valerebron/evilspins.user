@@ -6,8 +6,8 @@
     </header>
 
     <section v-if="renderedBoxes.length" ref="shelfRef" class="mix-shelf">
-      <Box :box="item" :is-selected="selectedBoxId === item.id" @toggle-select="toggleBoxSelection(item.id)"
-        v-for="item in renderedBoxes" :key="item.id" />
+      <Box :box="item" :is-selected="selectedBoxId === item.id"
+        @toggle-select="(face) => toggleBoxSelection(item.id, face)" v-for="item in renderedBoxes" :key="item.id" />
     </section>
 
     <section v-else-if="!boxStore.pending" class="mix-empty">
@@ -19,14 +19,22 @@
 <script setup lang="ts">
 const boxStore = useBoxStore()
 const selectedBoxId = ref<string | null>(null)
+const selectedBoxFace = ref<'A' | 'B'>('A')
 const shelfRef = ref<HTMLElement | null>(null)
 
-const toggleBoxSelection = (boxId: string) => {
+const toggleBoxSelection = async (boxId: string, face: 'A' | 'B') => {
+  if (selectedBoxId.value === boxId) {
+    await navigateTo(`/box/${boxId}${face}`)
+    return
+  }
+
   selectedBoxId.value = boxId
+  selectedBoxFace.value = face
 }
 
 const resetSelection = () => {
   selectedBoxId.value = null
+  selectedBoxFace.value = 'A'
 }
 
 const onGlobalKeydown = (event: KeyboardEvent) => {
