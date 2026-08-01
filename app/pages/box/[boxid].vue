@@ -1,17 +1,7 @@
 <template>
   <main class="box-page">
-    <header class="box-page__header">
-      <NuxtLink class="box-page__back" to="/mix">Retour</NuxtLink>
-      <p v-if="pending">Chargement de la box...</p>
-      <p v-else-if="error">{{ error }}</p>
-      <template v-else-if="box">
-        <h1>{{ box.name }}</h1>
-      </template>
-    </header>
-
     <section v-if="box" class="box-page__faces">
       <article v-for="side in boxSides" :key="side" class="box-page__face-block">
-        <h2>Face {{ side }}</h2>
         <div class="box-page__grid">
           <Card v-for="card in cardsBySide(side)" :key="card.esid" :card="card" :is-face-up="false"
             :back-color="box?.color?.[side] || null" :navigate-on-click="true" :show-play-button="false" />
