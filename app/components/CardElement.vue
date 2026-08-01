@@ -13,7 +13,7 @@
 
         <!-- Cover -->
         <figure class="cover">
-          <PlayButton :is-loading="isLoading" />
+          <PlayButton :is-loading="isLoading" :is-playing="props.isPlaying" />
           <img v-if="props.card.url_image?.startsWith('blob:')" :src="props.card.url_image" alt="card cover"
             class="cover-image w-full h-full object-cover object-center" draggable="false" />
           <UnLazyImage v-else :src="props.card.url_image" alt="card cover" loading="lazy"
@@ -37,7 +37,7 @@
       <footer
         class="face-down z-10 p-[6%] bg-opacity-10 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden select-none">
         <figure class="cover">
-          <PlayButton :is-loading="isLoading" />
+          <PlayButton :is-loading="isLoading" :is-playing="props.isPlaying" />
           <img :src="faceDownImageSrc" class="cover-image" :style="{ backgroundColor: cardColor }" draggable="false" />
         </figure>
       </footer>
@@ -57,12 +57,14 @@ const props = withDefaults(defineProps<{
   isFaceUp?: boolean;
   isLoading?: boolean;
   isDisabled?: boolean;
+  isPlaying?: boolean;
   role?: string;
   tabindex?: string | number;
 }>(), {
   backColor: null,
   isFaceUp: false,
   isDisabled: false,
+  isPlaying: false,
   role: 'button',
   tabindex: '0'
 })
@@ -161,8 +163,8 @@ const onCardEnter = (event: KeyboardEvent) => {
     }
   }
 
-  &:focus,
-  &.current-card {
+  &:focus:not(.is-disabled),
+  &.current-card:not(.is-disabled) {
     @apply z-50 scale-110;
     outline: none;
 
@@ -174,8 +176,8 @@ const onCardEnter = (event: KeyboardEvent) => {
     }
   }
 
-  &:focus,
-  &.current-card {
+  &:focus:not(.is-disabled),
+  &.current-card:not(.is-disabled) {
     .play-button {
       @apply opacity-100;
     }

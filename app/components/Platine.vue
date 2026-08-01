@@ -48,7 +48,7 @@ const props = withDefaults(defineProps<{
   active: true,
 })
 
-const emit = defineEmits(['loaded', 'finishPlaying'])
+const emit = defineEmits(['loaded', 'finishPlaying', 'play-state-changed'])
 
 // State
 const isLoadingTrack = ref(false)
@@ -191,6 +191,7 @@ const play = async (position = 0, withAcceleration = true) => {
     disc.value.powerOn()
   }
 
+  emit('play-state-changed', true)
   void requestWakeLock()
   return true
 }
@@ -243,6 +244,7 @@ const jumpToNearEnd = async (secondsBeforeEnd = 5) => {
 
 const unload = () => {
   cleanup()
+  emit('play-state-changed', false)
   void releaseWakeLock()
   isEndOfTrack.value = false
   progressPercentage.value = 0
@@ -256,16 +258,18 @@ const pause = () => {
 
   sampler.value.pauseWithDeceleration()
   disc.value.powerOffWithDeceleration()
+  emit('play-state-changed', false)
   void releaseWakeLock()
 }
 
 const togglePlay = async () => {
   if (isPlaying.value) {
     pause()
+    return false
   } else {
     // Reprendre la lecture à la position actuelle
     const currentPosition = disc.value?.secondsPlayed || 0
-    await play(currentPosition)
+    return await play(currentPosition)
   }
 }
 

@@ -17,7 +17,8 @@
     <section v-if="isPlaybackOpen" ref="playbackRef" class="mix-playback">
       <div class="mix-playback__deck-wrap">
         <TarotDeck :key="playbackDeckKey" :box-id="playbackBoxIdWithFace" :start-slug="playbackStartSlug || undefined"
-          embedded @track-started="handleTrackStarted" />
+          ref="tarotDeckRef" embedded @track-started="handleTrackStarted"
+          @play-state-changed="handlePlaybackStateChanged" />
       </div>
 
       <ul class="mix-playback__cards" aria-label="Cartes de la box en lecture">
@@ -25,6 +26,7 @@
           :data-card-slug="card.slug || ''">
           <Card :card="card" :is-face-up="isCardAlreadyRead(card)" :back-color="playbackFaceColor"
             :is-current="playbackStartSlug === (card.slug || '')" :show-play-button="false"
+            :is-playing="isCurrentlyPlayingCard(card)"
             :disabled="!isCardAlreadyRead(card)" click-behavior="external-player"
             @play-request="queuePlaybackFromCard" />
         </li>
@@ -44,9 +46,11 @@ const selectedBoxId = ref<string | null>(null)
 const selectedBoxFace = ref<'A' | 'B'>('A')
 const shelfRef = ref<HTMLElement | null>(null)
 const playbackRef = ref<HTMLElement | null>(null)
+const tarotDeckRef = ref<InstanceType<typeof TarotDeck> | null>(null)
 const playbackBoxId = ref<string | null>(null)
 const playbackBoxFace = ref<'A' | 'B'>('A')
 const playbackStartSlug = ref<string | null>(null)
+const playbackIsPlaying = ref(false)
 const { ensureLoaded, stateBySlug } = usePersistentCardState()
 const routeSyncReady = ref(false)
 
@@ -130,15 +134,51 @@ const handleTrackStarted = (card: CardType) => {
   }
 
   playbackStartSlug.value = slug
+  playbackIsPlaying.value = true
   void scrollToPlaybackCard(slug)
 }
 
-const queuePlaybackFromCard = (card: CardType) => {
+const handlePlaybackStateChanged = (payload: { card: CardType, isPlaying: boolean }) => {
+  const slug = payload.card.slug || ''
+  if (!slug) {
+    return
+  }
+
+  if (playbackStartSlug.value !== slug) {
+    playbackStartSlug.value = slug
+  }
+
+  playbackIsPlaying.value = payload.isPlaying
+}
+
+const isCurrentlyPlayingCard = (card: CardType) => {
+  const slug = card.slug || ''
+  if (!slug) {
+    return false
+  }
+
+  return playbackIsPlaying.value && playbackStartSlug.value === slug
+}
+
+const queuePlaybackFromCard = async (card: CardType) => {
   if (!playbackBoxId.value) {
     return
   }
 
-  playbackStartSlug.value = card.slug
+  const slug = card.slug || ''
+  if (slug) {
+    void scrollToPlaybackCard(slug)
+  }
+
+  if (slug && playbackStartSlug.value === slug) {
+    const nextIsPlaying = await tarotDeckRef.value?.togglePlayback?.()
+    if (typeof nextIsPlaying === 'boolean') {
+      playbackIsPlaying.value = nextIsPlaying
+    }
+    return
+  }
+
+  playbackStartSlug.value = slug
 }
 
 const resolveFaceForBox = (box: BoxDetails): 'A' | 'B' => {
@@ -196,6 +236,7 @@ const clearSelectionState = () => {
   playbackBoxId.value = null
   playbackBoxFace.value = 'A'
   playbackStartSlug.value = null
+  playbackIsPlaying.value = false
 }
 
 const syncRouteWithPlayback = async () => {

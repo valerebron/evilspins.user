@@ -2,11 +2,13 @@
   <main class="tarot-player" :class="{ 'tarot-player--embedded': props.embedded }">
     <section class="tarot-player__deck-stage">
       <div class="tarot-player__deck" :class="{ 'is-active': activeDeck === 'A' }" v-show="activeDeck === 'A'">
-        <MixDeckCard ref="deckARef" label="A" :card="deckA.card" :active="activeDeck === 'A'" />
+        <MixDeckCard ref="deckARef" label="A" :card="deckA.card" :active="activeDeck === 'A'"
+          @play-state-changed="(isPlaying) => onDeckPlayStateChanged('A', isPlaying)" />
       </div>
 
       <div class="tarot-player__deck" :class="{ 'is-active': activeDeck === 'B' }" v-show="activeDeck === 'B'">
-        <MixDeckCard ref="deckBRef" label="B" :card="deckB.card" :active="activeDeck === 'B'" />
+        <MixDeckCard ref="deckBRef" label="B" :card="deckB.card" :active="activeDeck === 'B'"
+          @play-state-changed="(isPlaying) => onDeckPlayStateChanged('B', isPlaying)" />
       </div>
     </section>
 
@@ -28,6 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'track-started': [card: Card]
+  'play-state-changed': [payload: { card: Card, isPlaying: boolean }]
 }>()
 
 const SWITCH_GUARD_SECONDS = 0.18
@@ -59,18 +62,7 @@ const onKeyDown = async (event: KeyboardEvent) => {
 
   if (event.code === 'Space' || event.key === ' ') {
     event.preventDefault()
-
-    if (autoplayBlocked.value) {
-      await resumePlayback()
-      return
-    }
-
-    const activeRef = getDeckRef(activeDeck.value)
-    if (!activeRef) {
-      return
-    }
-
-    await activeRef.togglePlay?.()
+    await togglePlayback()
     return
   }
 
@@ -91,6 +83,19 @@ const baseBoxId = computed(() => props.boxId.replace(/[AB]$/, ''))
 const getDeckRef = (deck: 'A' | 'B') => deck === 'A' ? deckARef.value : deckBRef.value
 
 const getInactiveDeck = () => activeDeck.value === 'A' ? 'B' : 'A'
+
+const onDeckPlayStateChanged = (deck: 'A' | 'B', isPlaying: boolean) => {
+  if (activeDeck.value !== deck) {
+    return
+  }
+
+  const card = deck === 'A' ? deckA.card : deckB.card
+  if (!card) {
+    return
+  }
+
+  emit('play-state-changed', { card, isPlaying })
+}
 
 const resolveBoxCards = async () => {
   const box = await boxStore.fetchBoxById(baseBoxId.value, true)
@@ -181,6 +186,7 @@ const startPlayback = async () => {
   autoplayBlocked.value = !didPlay
   if (didPlay && deckA.card) {
     emit('track-started', deckA.card)
+    emit('play-state-changed', { card: deckA.card, isPlaying: true })
   }
 }
 
@@ -215,6 +221,7 @@ const switchDeck = async () => {
   const incomingCard = toDeck === 'A' ? deckA.card : deckB.card
   if (incomingCard) {
     emit('track-started', incomingCard)
+    emit('play-state-changed', { card: incomingCard, isPlaying: true })
   }
 
   // No crossfader: switch source directly once incoming deck starts.
@@ -260,8 +267,29 @@ const resumePlayback = async () => {
     const activeCard = activeDeck.value === 'A' ? deckA.card : deckB.card
     if (activeCard) {
       emit('track-started', activeCard)
+      emit('play-state-changed', { card: activeCard, isPlaying: true })
     }
   }
+}
+
+const togglePlayback = async () => {
+  if (autoplayBlocked.value) {
+    await resumePlayback()
+    return true
+  }
+
+  const activeRef = getDeckRef(activeDeck.value)
+  if (!activeRef) {
+    return false
+  }
+
+  const isPlaying = await activeRef.togglePlay?.()
+  const activeCard = activeDeck.value === 'A' ? deckA.card : deckB.card
+  if (activeCard && typeof isPlaying === 'boolean') {
+    emit('play-state-changed', { card: activeCard, isPlaying })
+  }
+
+  return Boolean(isPlaying)
 }
 
 onMounted(async () => {
@@ -281,6 +309,10 @@ onUnmounted(() => {
 
   deckARef.value?.pause()
   deckBRef.value?.pause()
+})
+
+defineExpose({
+  togglePlayback,
 })
 </script>
 

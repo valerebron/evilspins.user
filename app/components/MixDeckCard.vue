@@ -5,7 +5,7 @@
 
     <Platine v-if="card && isPlatineMounted" :key="`platine-${card.slug}`" ref="platineRef" :card="card"
       :active="active" class="mix-deck__platine" :class="{ 'mix-deck__platine--visible': isOpen }"
-      @loaded="onTrackLoaded" @finishPlaying="onFinishPlaying" />
+      @loaded="onTrackLoaded" @finishPlaying="onFinishPlaying" @play-state-changed="onPlayStateChanged" />
   </section>
 </template>
 
@@ -23,6 +23,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   ready: []
+  'play-state-changed': [isPlaying: boolean]
 }>()
 
 const platineRef = ref<InstanceType<typeof Platine> | null>(null)
@@ -90,6 +91,10 @@ const onFinishPlaying = () => {
   markCardPlayedToEnd(props.card.slug)
 }
 
+const onPlayStateChanged = (isPlaying: boolean) => {
+  emit('play-state-changed', isPlaying)
+}
+
 const resume = async () => {
   const current = platineRef.value?.getCurrentTime?.() || 0
   if (!platineRef.value) return false
@@ -126,8 +131,8 @@ const togglePlay = async () => {
     return false
   }
 
-  await platineRef.value.togglePlay?.()
-  return true
+  const nextPlayingState = await platineRef.value.togglePlay?.()
+  return Boolean(nextPlayingState)
 }
 
 watch(() => props.card, async () => {
