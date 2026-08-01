@@ -4,11 +4,6 @@
       <h1>{{ playbackBox.name }}</h1>
     </header>
 
-    <header class="mix-head">
-      <p v-if="boxStore.pending">Chargement des boxes...</p>
-      <p v-else-if="boxStore.error">{{ boxStore.error }}</p>
-    </header>
-
     <section v-if="renderedBoxes.length" ref="shelfRef" class="mix-shelf">
       <Box :box="item" :is-selected="selectedBoxId === item.id"
         @toggle-select="(face) => toggleBoxSelection(item.id, face)" v-for="item in renderedBoxes" :key="item.id" />
@@ -241,7 +236,7 @@ const syncRouteWithPlayback = async () => {
   const targetId = playbackBoxId.value
     ? `${playbackBoxId.value}${playbackBoxFace.value === 'B' ? 'B' : ''}`
     : ''
-  const targetPath = targetId ? `/box/${targetId}` : '/box'
+  const targetPath = targetId ? `/compilation/${targetId}` : '/compilation'
 
   if (route.path === targetPath) {
     return
@@ -254,14 +249,14 @@ const openBoxFromRoute = async (rawRouteId: string) => {
   const { boxId, requestedFace } = parseRouteBoxTarget(rawRouteId)
   if (!boxId) {
     clearSelectionState()
-    await navigateTo('/box', { replace: true })
+    await navigateTo('/compilation', { replace: true })
     return
   }
 
   const box = await boxStore.fetchBoxById(boxId)
   if (!box) {
     clearSelectionState()
-    await navigateTo('/box', { replace: true })
+    await navigateTo('/compilation', { replace: true })
     return
   }
 

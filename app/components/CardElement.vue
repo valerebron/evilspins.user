@@ -72,7 +72,7 @@ const props = withDefaults(defineProps<{
 import { getYearColor } from '~/utils/colors'
 
 const cardColor = computed(() => props.backColor || getYearColor(props.card.year || 0))
-const isBoxRoute = computed(() => route.path.startsWith('/box'))
+const isBoxRoute = computed(() => route.path.startsWith('/compilation'))
 const faceDownImageSrc = computed(() => isBoxRoute.value ? '/face-down-tarot.svg' : '/face-down.svg')
 
 const onCardClick = (event: MouseEvent) => {
