@@ -4,7 +4,8 @@
       <article v-for="side in boxSides" :key="side" class="box-page__face-block">
         <div class="box-page__grid">
           <Card v-for="card in cardsBySide(side)" :key="card.esid" :card="card" :is-face-up="false"
-            :back-color="box?.color?.[side] || null" :navigate-on-click="true" :show-play-button="false" />
+            :back-color="box?.color?.[side] || null" :navigate-on-click="true"
+            :navigate-target="getBoxPlaybackTarget(card.slug)" :show-play-button="false" />
         </div>
       </article>
     </section>
@@ -26,6 +27,15 @@ const boxSides = computed(() => {
 
 const cardsBySide = (side: string) => {
   return (box.value?.cards ?? []).filter(card => card.box_side === side)
+}
+
+const getBoxPlaybackTarget = (slug: string) => {
+  const params = new URLSearchParams({
+    box: boxId,
+    start: slug,
+  })
+
+  return `/mix/tarot?${params.toString()}`
 }
 
 const { pending, error } = await useAsyncData(`box-${baseBoxId.value}`, async () => {

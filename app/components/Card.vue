@@ -20,6 +20,7 @@ const props = defineProps<{
   backColor?: string | null,
   isFaceUp?: boolean,
   navigateOnClick?: boolean,
+  navigateTarget?: string,
   autoplay?: boolean,
   showPlayButton?: boolean,
 }>()
@@ -110,7 +111,7 @@ const shouldClose = computed(() => {
 
 const clickOnCard = async () => {
   if (props.navigateOnClick) {
-    navigateTo(`/card/${props.card.slug}?autoplay=true`)
+    navigateTo(props.navigateTarget || `/card/${props.card.slug}?autoplay=true`)
     return
   }
 

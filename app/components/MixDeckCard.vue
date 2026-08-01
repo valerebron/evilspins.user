@@ -70,9 +70,9 @@ const waitUntilReady = (timeoutMs = 12000): Promise<boolean> => {
   })
 }
 
-const play = async (position = 0) => {
+const play = async (position = 0, withAcceleration = true) => {
   if (!platineRef.value) return false
-  return await platineRef.value.play(position)
+  return await platineRef.value.play(position, withAcceleration)
 }
 
 const resume = async () => {
@@ -101,6 +101,11 @@ const getRemainingTime = () => {
   return platineRef.value?.getRemainingTime?.() ?? Infinity
 }
 
+const jumpToNearEnd = async (secondsBeforeEnd = 5) => {
+  if (!platineRef.value) return false
+  return await platineRef.value.jumpToNearEnd?.(secondsBeforeEnd)
+}
+
 watch(() => props.card, async () => {
   prepareVisualState()
   await nextTick()
@@ -111,6 +116,7 @@ defineExpose({
   play,
   resume,
   pause,
+  jumpToNearEnd,
   unload,
   setVolume,
   getRemainingTime,

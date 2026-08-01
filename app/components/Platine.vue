@@ -166,7 +166,7 @@ const loadAudio = async (card: Card) => {
   }
 }
 
-const play = async (position = 0) => {
+const play = async (position = 0, withAcceleration = true) => {
   isFirstPlay.value = false
   if (!disc.value || !sampler.value || !props.card) return false
 
@@ -183,8 +183,14 @@ const play = async (position = 0) => {
     progressPercentage.value = 17 // valeur minimale définie dans updateTurns
   }
 
-  sampler.value.play(position, true)
-  disc.value.powerOnWithAcceleration()
+  sampler.value.play(position, withAcceleration)
+
+  if (withAcceleration) {
+    disc.value.powerOnWithAcceleration()
+  } else {
+    disc.value.powerOn()
+  }
+
   void requestWakeLock()
   return true
 }
@@ -205,6 +211,34 @@ const getRemainingTime = () => {
   const duration = getDuration()
   if (!duration) return Infinity
   return Math.max(0, duration - getCurrentTime())
+}
+
+const jumpToPosition = async (position: number) => {
+  if (!disc.value || !sampler.value) return false
+
+  const duration = getDuration()
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return false
+  }
+
+  const target = Math.max(0, Math.min(position, duration))
+
+  // Saut immédiat pour les tests de transition: pas de rampe d'accélération.
+  sampler.value.play(target, false)
+  disc.value.setAngle(target * 0.75 * Math.PI * 2)
+  updateTurns()
+  void requestWakeLock()
+  return true
+}
+
+const jumpToNearEnd = async (secondsBeforeEnd = 5) => {
+  const duration = getDuration()
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return false
+  }
+
+  const target = Math.max(0, duration - secondsBeforeEnd)
+  return await jumpToPosition(target)
 }
 
 const unload = () => {
@@ -502,6 +536,7 @@ defineExpose({
   canAutoplayNow,
   pause,
   play,
+  jumpToNearEnd,
   togglePlay,
   Reverse,
   Rewind,

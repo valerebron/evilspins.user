@@ -4,12 +4,14 @@
     <section class="mix-page__decks">
       <div class="mix-page__deck-slot">
         <MixDeckCard ref="deckARef" label="A" :card="deckA.card" :active="activeDeck === 'A'" />
-        <button type="button" class="mix-page__deck-picker" @click="openDeckPicker('A')">Eject A</button>
+        <button v-if="!isBoxPlaybackMode" type="button" class="mix-page__deck-picker" @click="openDeckPicker('A')">Eject
+          A</button>
       </div>
 
       <div class="mix-page__deck-slot">
         <MixDeckCard ref="deckBRef" label="B" :card="deckB.card" :active="activeDeck === 'B'" />
-        <button type="button" class="mix-page__deck-picker" @click="openDeckPicker('B')">Eject B</button>
+        <button v-if="!isBoxPlaybackMode" type="button" class="mix-page__deck-picker" @click="openDeckPicker('B')">Eject
+          B</button>
       </div>
     </section>
 
@@ -23,8 +25,9 @@
       <button type="button" @click="resumePlayback">Lancer le Mix</button>
     </div>
 
-    <CardSearchPanel mode="modal" :open="isPickerOpen" :title="pickerTitle" pick-label="Charger"
-      :selected-slug="selectedDeckSlug" close-on-select @select="onPickCardForDeck" @close="closeDeckPicker" />
+    <CardSearchPanel v-if="!isBoxPlaybackMode" mode="modal" :open="isPickerOpen" :title="pickerTitle"
+      pick-label="Charger" :selected-slug="selectedDeckSlug" close-on-select @select="onPickCardForDeck"
+      @close="closeDeckPicker" />
   </main>
 </template>
 
@@ -45,6 +48,10 @@ useHead({
 
 const AUTO_CROSSFADE_SECONDS = 15
 const USER_PRIORITY_MS = 1600
+const BOX_QUEUE_PRELOAD_SIZE = 2
+
+const route = useRoute()
+const boxStore = useBoxStore()
 
 const deckARef = ref<InstanceType<typeof MixDeckCard> | null>(null)
 const deckBRef = ref<InstanceType<typeof MixDeckCard> | null>(null)
@@ -59,6 +66,19 @@ const autoplayBlocked = ref(false)
 const isPortraitLayout = ref(false)
 const isUserInteractingFader = ref(false)
 const pickerDeck = ref<'A' | 'B' | null>(null)
+
+const resolveQueryString = (value: string | string[] | undefined) => {
+  if (Array.isArray(value)) {
+    return value[0] || ''
+  }
+  return value || ''
+}
+
+const boxQueryId = computed(() => resolveQueryString(route.query.box))
+const boxStartSlug = computed(() => resolveQueryString(route.query.start))
+const isBoxPlaybackMode = computed(() => boxQueryId.value.length > 0)
+const requestedBoxSide = computed<'A' | 'B'>(() => boxQueryId.value.endsWith('B') ? 'B' : 'A')
+const requestedBoxBaseId = computed(() => boxQueryId.value.replace(/[AB]$/, ''))
 
 const isPickerOpen = computed(() => pickerDeck.value !== null)
 
@@ -102,7 +122,9 @@ const faderGlowStyle = computed(() => {
   }
 })
 
-const queue = ref<Card[]>([])
+const randomQueue = ref<Card[]>([])
+const boxPlaybackCards = ref<Card[]>([])
+const boxPlaybackCursor = ref(0)
 
 let monitorTimer: ReturnType<typeof window.setInterval> | null = null
 let fadeRafId: number | null = null
@@ -139,7 +161,61 @@ const fetchRandomCard = async () => {
   return await $fetch<Card>('/api/card/random')
 }
 
+const loadBoxPlaybackCards = async () => {
+  const baseBoxId = requestedBoxBaseId.value
+  if (!baseBoxId) {
+    boxPlaybackCards.value = []
+    boxPlaybackCursor.value = 0
+    return
+  }
+
+  const box = await boxStore.fetchBoxById(baseBoxId, true)
+  if (!box) {
+    boxPlaybackCards.value = []
+    boxPlaybackCursor.value = 0
+    return
+  }
+
+  const preferredSide = requestedBoxSide.value
+  const sideCards = box.cards
+    .filter(card => (card.box_side || '').toUpperCase() === preferredSide)
+    .sort((left, right) => {
+      const leftPosition = Number.isFinite(left.box_position) ? Number(left.box_position) : Number.MAX_SAFE_INTEGER
+      const rightPosition = Number.isFinite(right.box_position) ? Number(right.box_position) : Number.MAX_SAFE_INTEGER
+      return leftPosition - rightPosition
+    })
+
+  const orderedCards = sideCards.length > 0
+    ? sideCards
+    : [...box.cards].sort((left, right) => {
+      const leftPosition = Number.isFinite(left.box_position) ? Number(left.box_position) : Number.MAX_SAFE_INTEGER
+      const rightPosition = Number.isFinite(right.box_position) ? Number(right.box_position) : Number.MAX_SAFE_INTEGER
+      return leftPosition - rightPosition
+    })
+
+  const startSlug = boxStartSlug.value
+  if (!startSlug) {
+    boxPlaybackCards.value = orderedCards
+    boxPlaybackCursor.value = 0
+    return
+  }
+
+  const startIndex = orderedCards.findIndex(card => card.slug === startSlug)
+  if (startIndex <= 0) {
+    boxPlaybackCards.value = orderedCards
+    boxPlaybackCursor.value = 0
+    return
+  }
+
+  boxPlaybackCards.value = [
+    ...orderedCards.slice(startIndex),
+    ...orderedCards.slice(0, startIndex),
+  ]
+  boxPlaybackCursor.value = 0
+}
+
 const openDeckPicker = (deck: 'A' | 'B') => {
+  if (isBoxPlaybackMode.value) return
   pickerDeck.value = deck
 }
 
@@ -148,6 +224,10 @@ const closeDeckPicker = () => {
 }
 
 const onPickCardForDeck = async (card: Card) => {
+  if (isBoxPlaybackMode.value) {
+    return
+  }
+
   const targetDeck = pickerDeck.value
   if (!targetDeck) {
     return
@@ -163,7 +243,7 @@ const onPickCardForDeck = async (card: Card) => {
     deckB.card = card
   }
 
-  queue.value = queue.value.filter((queuedCard) => queuedCard.slug !== card.slug)
+  randomQueue.value = randomQueue.value.filter((queuedCard) => queuedCard.slug !== card.slug)
 
   await nextTick()
   const isReady = await waitForReady(targetDeck)
@@ -181,18 +261,33 @@ const onPickCardForDeck = async (card: Card) => {
   closeDeckPicker()
 }
 
-const fillQueue = async (minSize = 3) => {
-  while (queue.value.length < minSize) {
+const fillRandomQueue = async (minSize = 3) => {
+  while (randomQueue.value.length < minSize) {
     const card = await fetchRandomCard()
-    queue.value.push(card)
+    randomQueue.value.push(card)
   }
 }
 
+const takeNextBoxCard = () => {
+  const cards = boxPlaybackCards.value
+  if (cards.length === 0) {
+    return null
+  }
+
+  const card = cards[boxPlaybackCursor.value % cards.length]
+  boxPlaybackCursor.value = (boxPlaybackCursor.value + 1) % cards.length
+  return card
+}
+
 const takeNextCard = async () => {
-  await fillQueue(1)
-  const next = queue.value.shift()
+  if (isBoxPlaybackMode.value) {
+    return takeNextBoxCard()
+  }
+
+  await fillRandomQueue(1)
+  const next = randomQueue.value.shift()
   if (!next) return null
-  void fillQueue(3)
+  void fillRandomQueue(3)
   return next
 }
 
@@ -219,7 +314,15 @@ const loadDeckTrack = async (deck: 'A' | 'B') => {
 }
 
 const prepareInitialTracks = async () => {
-  await fillQueue(2)
+  if (isBoxPlaybackMode.value) {
+    await loadBoxPlaybackCards()
+    if (boxPlaybackCards.value.length === 0) {
+      await fillRandomQueue(BOX_QUEUE_PRELOAD_SIZE)
+    }
+  } else {
+    await fillRandomQueue(BOX_QUEUE_PRELOAD_SIZE)
+  }
+
   await Promise.all([
     loadDeckTrack('A'),
     loadDeckTrack('B'),

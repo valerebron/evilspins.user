@@ -21,7 +21,8 @@
                   <img class="stacked-card-cover__image" :src="coverFrontUrl" alt="box front cover" draggable="false" />
                 </div>
                 <card v-else-if="index === 0" :card="item" :back-color="activeFaceColor" :is-face-up="true"
-                  :navigate-on-click="true" :show-play-button="false" />
+                  :navigate-on-click="true" :navigate-target="getBoxPlaybackTarget(item.slug)"
+                  :show-play-button="false" />
                 <BoxBlurhashCard v-else :blurhash="item.blurhash" :card-year="item.year" :is-face-up="true" />
                 <div v-if="index === 0 && selectedMode === 'selected'" class="stacked-card-play-overlay">
                   <PlayButton />
@@ -32,7 +33,8 @@
                   <img class="stacked-card-cover__image" :src="coverBackUrl" alt="box back cover" draggable="false" />
                 </div>
                 <card v-else-if="index === 0" :card="item" :back-color="activeFaceColor" :is-face-up="false"
-                  :navigate-on-click="true" :show-play-button="false" />
+                  :navigate-on-click="true" :navigate-target="getBoxPlaybackTarget(item.slug)"
+                  :show-play-button="false" />
                 <BoxBlurhashCard v-else :blurhash="item.blurhash" :card-year="item.year" :is-face-up="false" />
               </div>
             </div>
@@ -198,6 +200,20 @@ const requestToggleSelection = () => {
   }
 
   emit('toggle-select', activeCompilationSide.value)
+}
+
+const getBoxPlaybackTarget = (slug: string) => {
+  const boxId = props.box?.id
+  if (!boxId) {
+    return `/card/${slug}?autoplay=true`
+  }
+
+  const params = new URLSearchParams({
+    box: `${boxId}${activeCompilationSide.value}`,
+    start: slug,
+  })
+
+  return `/mix/tarot?${params.toString()}`
 }
 
 const stopSpinInertia = () => {
