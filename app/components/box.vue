@@ -59,9 +59,12 @@ const { resolveMediaUrl } = useMediaUrl()
 
 type BoxSide = 'front' | 'right' | 'back' | 'left' | 'top' | 'bottom'
 type BoxMode = 'stored' | 'selected'
+type CompilationSide = 'A' | 'B'
 
 const isAnimating = ref(false)
 const BASE_ORIENTATION = 270
+const SIDE_SWITCH_ENERGY_THRESHOLD = 0.16
+const SIDE_SWITCH_MIN_DRAG_DISTANCE = 140
 const faceDimensions: Record<BoxSide, { widthFactor: number, heightFactor: number }> = {
   front: { widthFactor: 1.5, heightFactor: 1 },
   back: { widthFactor: 1.5, heightFactor: 1 },
@@ -72,7 +75,35 @@ const faceDimensions: Record<BoxSide, { widthFactor: number, heightFactor: numbe
 }
 
 const selectedMode = computed<BoxMode>(() => (props.isSelected ? 'selected' : 'stored'))
-const selectedSide = computed<BoxSide>(() => (selectedMode.value === 'stored' ? 'top' : 'front'))
+const requestedCompilationSide = ref<CompilationSide>('A')
+const availableCompilationSides = computed<Set<CompilationSide>>(() => {
+  const sides = new Set<CompilationSide>()
+  for (const card of props.box?.cards ?? []) {
+    const normalizedSide = typeof card.box_side === 'string' ? card.box_side.toUpperCase() : ''
+    if (normalizedSide === 'A' || normalizedSide === 'B') {
+      sides.add(normalizedSide)
+    }
+  }
+
+  return sides
+})
+const activeCompilationSide = computed<CompilationSide>(() => {
+  if (requestedCompilationSide.value === 'B' && availableCompilationSides.value.has('B')) {
+    return 'B'
+  }
+  if (availableCompilationSides.value.has('A')) {
+    return 'A'
+  }
+  if (availableCompilationSides.value.has('B')) {
+    return 'B'
+  }
+
+  return 'A'
+})
+const selectedSide = computed<BoxSide>(() => {
+  if (selectedMode.value === 'stored') return 'top'
+  return 'front'
+})
 const selectedOrientation = computed(() => (selectedMode.value === 'stored' ? 90 : 0))
 const showClass = computed(() => `show-${selectedSide.value}`)
 const spinAngle = ref(0)
@@ -82,6 +113,7 @@ const activePointerId = ref<number | null>(null)
 const lastPointerX = ref(0)
 const lastPointerTime = ref(0)
 const dragStartX = ref(0)
+const dragDistance = ref(0)
 const suppressSelectionClick = ref(false)
 const sceneRef = ref<HTMLElement | null>(null)
 const spinVelocity = ref(0)
@@ -113,8 +145,50 @@ const boxStyle = computed(() => ({
   '--box-drag-spin': `${spinAngle.value}deg`,
   '--box-orientation': `${selectedOrientation.value}deg`,
 }))
-const stackedCards = computed(() => props.box?.cards || [])
+const stackedCards = computed(() => {
+  const cards = props.box?.cards ?? []
+  const cardsWithSide = cards.filter(card => typeof card.box_side === 'string' && card.box_side.length > 0)
+
+  // Default to face A and switch to B only when explicitly requested.
+  if (cardsWithSide.length > 0) {
+    const preferredSideCards = cardsWithSide.filter(card => card.box_side?.toUpperCase() === activeCompilationSide.value)
+    if (preferredSideCards.length > 0) return preferredSideCards
+
+    const faceBCards = cardsWithSide.filter(card => card.box_side?.toUpperCase() === 'B')
+    if (faceBCards.length > 0) {
+      return faceBCards
+    }
+
+    const faceACards = cardsWithSide.filter(card => card.box_side?.toUpperCase() === 'A')
+    if (faceACards.length > 0) {
+      return faceACards
+    }
+  }
+
+  return cards
+})
 const lastCardIndex = computed(() => Math.max(0, stackedCards.value.length - 1))
+
+const switchCompilationSideFromGesture = (dragDeltaX: number) => {
+  if (selectedMode.value !== 'selected') return
+  if (dragDistance.value < SIDE_SWITCH_MIN_DRAG_DISTANCE) return
+  if (Math.abs(spinVelocity.value) < SIDE_SWITCH_ENERGY_THRESHOLD) return
+
+  // Right swipe: A -> B
+  if (dragDeltaX > 0) {
+    if (requestedCompilationSide.value !== 'B' && availableCompilationSides.value.has('B')) {
+      requestedCompilationSide.value = 'B'
+    }
+    return
+  }
+
+  // Left swipe: B -> A
+  if (dragDeltaX < 0) {
+    if (requestedCompilationSide.value === 'B' && availableCompilationSides.value.has('A')) {
+      requestedCompilationSide.value = 'A'
+    }
+  }
+}
 
 const requestToggleSelection = () => {
   if (suppressSelectionClick.value) {
@@ -168,6 +242,7 @@ const onSpinPointerDown = (event: PointerEvent) => {
   isSpinDragging.value = true
   activePointerId.value = event.pointerId
   dragStartX.value = event.clientX
+  dragDistance.value = 0
   lastPointerX.value = event.clientX
   lastPointerTime.value = performance.now()
   suppressSelectionClick.value = false
@@ -183,6 +258,7 @@ const onSpinPointerMove = (event: PointerEvent) => {
   if (activePointerId.value !== event.pointerId) return
 
   const deltaX = event.clientX - lastPointerX.value
+  dragDistance.value = Math.max(dragDistance.value, Math.abs(event.clientX - dragStartX.value))
   if (Math.abs(event.clientX - dragStartX.value) > 6) {
     suppressSelectionClick.value = true
   }
@@ -206,6 +282,9 @@ const onSpinPointerUp = (event: PointerEvent) => {
 
   activePointerId.value = null
   isSpinDragging.value = false
+  const dragDeltaX = event.clientX - dragStartX.value
+  switchCompilationSideFromGesture(dragDeltaX)
+  dragDistance.value = 0
   startSpinInertia()
 }
 
@@ -220,6 +299,11 @@ watch(selectedMode, (mode) => {
   activePointerId.value = null
   suppressSelectionClick.value = false
   spinAngle.value = 0
+  dragDistance.value = 0
+})
+
+watch(() => props.box?.id, () => {
+  requestedCompilationSide.value = 'A'
 })
 
 onBeforeUnmount(() => {
@@ -246,8 +330,29 @@ const getCardStyle = (index: number) => {
   }
 }
 
-const coverFrontUrl = computed(() => resolveMediaUrl(props.box?.cover_front || ''))
-const coverBackUrl = computed(() => resolveMediaUrl(props.box?.cover_back || ''))
+const resolveCoverBySide = (coverPath: string, side: CompilationSide, face: 'front' | 'back'): string => {
+  if (side !== 'B') return coverPath
+
+  const withExplicitSuffix = coverPath.replace(
+    new RegExp(`${face}-a(\\.[^./]+)$`, 'i'),
+    `${face}-b$1`,
+  )
+  if (withExplicitSuffix !== coverPath) return withExplicitSuffix
+
+  return coverPath.replace(
+    new RegExp(`${face}(\\.[^./]+)$`, 'i'),
+    `${face}-b$1`,
+  )
+}
+
+const coverFrontUrl = computed(() => {
+  const coverPath = resolveCoverBySide(props.box?.cover_front || '', activeCompilationSide.value, 'front')
+  return resolveMediaUrl(coverPath)
+})
+const coverBackUrl = computed(() => {
+  const coverPath = resolveCoverBySide(props.box?.cover_back || '', activeCompilationSide.value, 'back')
+  return resolveMediaUrl(coverPath)
+})
 </script>
 
 <style scoped lang="scss">
