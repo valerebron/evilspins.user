@@ -18,6 +18,7 @@ logs
 .fleet
 .idea
 .env
-.agent
+.agents
 
+skills-lock.json
 public/box.jpeg
