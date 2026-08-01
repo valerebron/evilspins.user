@@ -29,6 +29,7 @@ module.exports = {
     }
   },
   plugins: [
+    require("daisyui"),
     function ({ addUtilities }) {
       addUtilities({
         '.screen-centered': {
