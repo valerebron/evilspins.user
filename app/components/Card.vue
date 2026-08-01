@@ -2,8 +2,7 @@
   <section class="card text-center"
     :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted, 'show-play-button': showPlayButton, 'is-disabled': isDisabled }">
     <CardElement :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
-      :is-loading="isLoading" :back-color="props.backColor" :is-disabled="isDisabled"
-      :is-playing="props.isPlaying"
+      :is-loading="isLoading" :back-color="props.backColor" :is-disabled="isDisabled" :is-playing="props.isPlaying"
       :class="{ 'current-card': props.isCurrent }" />
     <Platine v-if="isPlatineMounted" ref="platineRef" :card="card" :active="isOpen"
       :class="{ 'fading-out': isPlatineFading }" @loaded="onTrackLoaded" @finishPlaying="onFinishPlaying"

@@ -26,9 +26,8 @@
           :data-card-slug="card.slug || ''">
           <Card :card="card" :is-face-up="isCardAlreadyRead(card)" :back-color="playbackFaceColor"
             :is-current="playbackStartSlug === (card.slug || '')" :show-play-button="false"
-            :is-playing="isCurrentlyPlayingCard(card)"
-            :disabled="!isCardAlreadyRead(card)" click-behavior="external-player"
-            @play-request="queuePlaybackFromCard" />
+            :is-playing="isCurrentlyPlayingCard(card)" :disabled="!isCardAlreadyRead(card)"
+            click-behavior="external-player" @play-request="queuePlaybackFromCard" />
         </li>
       </ul>
     </section>
