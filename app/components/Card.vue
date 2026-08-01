@@ -12,6 +12,7 @@
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
 import { timeout } from '~/utils/timeout'
+import { useSplashScreen } from '~/composables/useSplashScreen'
 import CardElement from './CardElement.vue'
 
 const props = defineProps<{
@@ -24,6 +25,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits(['open', 'close'])
+const { isSplashDone, waitForSplashDone } = useSplashScreen()
 
 const isPlatineMounted = ref(false)
 const isOpen = ref(false)
@@ -32,13 +34,29 @@ const isPlatineFading = ref(false) // for fade-out matching the audio decelerati
 let previousUrl: string | null = null // stock l'url avant l'ouverture de la carte pour pouvoir la restaurer à la fermeture
 
 // animation on mount so all Card instances animate when inserted
-const isMounted = ref(true)
+const isMounted = ref(false)
+let mountAnimationTimeout: ReturnType<typeof setTimeout> | null = null
 
-onMounted(() => {
+const startMountAnimation = () => {
+  if (mountAnimationTimeout) {
+    clearTimeout(mountAnimationTimeout)
+  }
+
+  isMounted.value = true
+
   // Doit rester synchronisé avec $card-mount-speed dans le SCSS (+ un petit buffer)
-  setTimeout(() => {
+  mountAnimationTimeout = setTimeout(() => {
     isMounted.value = false
+    mountAnimationTimeout = null
   }, 550)
+}
+
+onMounted(async () => {
+  if (!isSplashDone.value) {
+    await waitForSplashDone()
+  }
+
+  startMountAnimation()
 })
 
 const localIsFaceUp = ref(props.isFaceUp ?? false)
@@ -249,6 +267,10 @@ watch(() => props.autoplay, async (autoplay) => {
     return
   }
 
+  if (!isSplashDone.value) {
+    await waitForSplashDone()
+  }
+
   const canStart = await canAutoplayNow()
   if (!canStart) {
     return
@@ -293,6 +315,11 @@ onBeforeUnmount(() => {
 })
 
 onUnmounted(() => {
+  if (mountAnimationTimeout) {
+    clearTimeout(mountAnimationTimeout)
+    mountAnimationTimeout = null
+  }
+
   if (stopCrossTabSync) {
     stopCrossTabSync()
     stopCrossTabSync = null

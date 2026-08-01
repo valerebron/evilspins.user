@@ -5,7 +5,7 @@
   </NuxtLayout>
 
   <Transition name="splash" @after-leave="markSplashDone">
-    <div v-if="showSplash" class="splash-screen" aria-label="Chargement" role="status">
+    <div v-if="isSplashRenderable && showSplash" class="splash-screen" aria-label="Chargement" role="status">
       <object class="splash-logo" data="/logo.svg" type="image/svg+xml" aria-label="Logo Evilspins" />
     </div>
   </Transition>
@@ -14,18 +14,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from '#imports'
+import { useSplashScreen } from '~/composables/useSplashScreen'
 
 const pageContent = ref<HTMLElement | null>(null)
 const router = useRouter()
-const showSplash = ref(true)
+const { initializeSplashSession, markSplashDone, markSplashPending } = useSplashScreen()
+const showSplash = ref(false)
+const isSplashRenderable = ref(false)
 
 let splashTimeout: ReturnType<typeof setTimeout> | null = null
-
-const markSplashDone = () => {
-  const splashAwareWindow = window as Window & { __evilspinsSplashDone?: boolean }
-  splashAwareWindow.__evilspinsSplashDone = true
-  window.dispatchEvent(new CustomEvent('splash-finished'))
-}
 
 const resetFocus = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
@@ -51,8 +48,16 @@ onMounted(() => {
   window.addEventListener('keydown', resetFocus)
   window.addEventListener('keydown', handleSearchShortcut)
 
-  const splashAwareWindow = window as Window & { __evilspinsSplashDone?: boolean }
-  splashAwareWindow.__evilspinsSplashDone = false
+  const hasSeenSplashInSession = initializeSplashSession()
+  isSplashRenderable.value = true
+
+  if (hasSeenSplashInSession) {
+    markSplashDone()
+    return
+  }
+
+  markSplashPending()
+  showSplash.value = true
 
   // Affiche le logo au premier chargement, puis masque l'overlay.
   splashTimeout = setTimeout(() => {
