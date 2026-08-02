@@ -36,10 +36,6 @@ import type { Card } from '~~/types/types'
 import MixDeckCard from '~/components/MixDeckCard.vue'
 import CardSearchPanel from '~/components/Search/CardSearchPanel.vue'
 
-definePageMeta({
-  inMenu: true,
-})
-
 useHead({
   bodyAttrs: {
     class: 'mix-page-body',

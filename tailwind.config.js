@@ -1,12 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    './components/**/*.{js,vue,ts}',
-    './layouts/**/*.vue',
-    './pages/**/*.vue',
-    './plugins/**/*.{js,ts}',
-    './app.vue',
-    './error.vue'
+    './**/*.{vue,js,ts}'
   ],
   theme: {
     extend: {
@@ -40,7 +35,7 @@ module.exports = {
           display: 'grid',
           'place-items': 'center'
         },
-        'full-screen': {
+        '.full-screen': {
           height: '100dvh',
           width: '100dvw'
         },

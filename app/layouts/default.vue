@@ -2,7 +2,7 @@
   <section class="page">
     <slot />
   </section>
-  <Menu v-if="!openCardId" />
+  <Dock v-if="!openCardId" />
 </template>
 
 <script setup lang="ts">
