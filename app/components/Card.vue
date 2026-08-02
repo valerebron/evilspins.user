@@ -153,14 +153,14 @@ const clickOnCard = async () => {
     return
   }
 
-  revealCardIfNeeded()
-
   if (clickBehavior.value === 'external-player') {
+    revealCardIfNeeded()
     emit('play-request', props.card)
     return
   }
 
   if (!isSelfPlayMode.value) {
+    revealCardIfNeeded()
     return
   }
 
@@ -191,6 +191,7 @@ const clickOnCard = async () => {
         return
       }
 
+      revealCardIfNeeded()
       announcePlaybackStarted()
       isOpen.value = true
       emit('open')
@@ -200,8 +201,7 @@ const clickOnCard = async () => {
 }
 
 const onTrackLoaded = async () => {
-  isFaceUp.value = true
-  markCardFlipped(cardId.value)
+  revealCardIfNeeded()
 
   // On laisse un peu de temps pour l'animation face-up,
   // puis on attend explicitement que les autres cartes aient commencé leur disparition
