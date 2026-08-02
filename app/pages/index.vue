@@ -78,4 +78,15 @@ onUnmounted(() => {
     transform: translateY(0) scale(1);
   }
 }
+
+.card {
+  &.close {
+    opacity: 0;
+    width: 0;
+
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+  }
+}
 </style>

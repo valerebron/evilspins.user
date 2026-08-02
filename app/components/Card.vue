@@ -128,6 +128,10 @@ const revealCardIfNeeded = () => {
 }
 
 const onButtonClick = (payload: { button: string; card: Card }) => {
+  if (payload.button === 'play') {
+    void clickOnCard()
+  }
+
   emit('button-click', payload)
 }
 
