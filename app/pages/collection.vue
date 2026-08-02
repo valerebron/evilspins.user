@@ -40,13 +40,18 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.collection-card .card {
-  width: 160px;
-}
+<style scoped lang="scss">
+.collection-card {
+  padding: 0 10px;
 
-.card.open {
-  transform: scale(1.5);
-  z-index: 10;
+  .card {
+    width: 160px;
+    margin: 10px;
+
+    &.open {
+      transform: scale(1.5);
+      z-index: 10;
+    }
+  }
 }
 </style>
