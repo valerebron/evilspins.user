@@ -1,6 +1,6 @@
 <template>
   <button :tabindex="props.interactive ? 0 : -1" class="play-button"
-    :class="{ loading: isLoading, interactive: props.interactive }" :disabled="isLoading" type="button">
+    :class="{ 'is-loading': isLoading, interactive: props.interactive }" :disabled="isLoading" type="button">
     <Loader v-if="props.isLoading" />
     <template v-else>
       <PlayPauseIcon :isPlaying class="fill-esyellow" />
@@ -50,7 +50,7 @@ const props = withDefaults(defineProps<{
   }
 }
 
-.loading,
+.is-loading,
 .play-button-changed {
   opacity: 1 !important;
 }
