@@ -2,7 +2,7 @@
   <section class="page">
     <slot />
   </section>
-  <Dock v-if="!openCardId" />
+  <Dock />
 </template>
 
 <script setup lang="ts">
@@ -24,22 +24,16 @@ useOutsideClick(() => {
 <style lang="scss">
 .page {
   display: flex;
-  flex-wrap: nowrap;
-  flex-direction: column;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  flex-direction: row;
+  overflow-x: visible;
   margin-bottom: 64px;
-
-  @screen sm {
-    flex-wrap: wrap;
-    flex-direction: row;
-    overflow-x: visible;
-  }
 
   place-items: center;
   justify-content: center;
   gap: 20px;
 
-  min-height: 100svh;
+  min-height: calc(100svh - 64px);
 }
 
 .card {

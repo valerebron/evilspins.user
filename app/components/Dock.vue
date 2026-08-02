@@ -1,23 +1,16 @@
 <template>
-  <nav class="dock">
-    <NuxtLink to="/" class="tooltip" :class="{ 'dock-active': activeDock === '/' }">
-      <div class="tooltip-content">
-        Tirage
-      </div>
+  <nav class="btm-nav">
+    <NuxtLink to="/" class="tooltip" :class="{ 'active': activeDock === '/' }" data-tip="Tirage">
       <object class="icon" data="/dice.svg" type="image/svg+xml" aria-label="tirage" />
     </NuxtLink>
 
-    <NuxtLink to="/compilation" class="tooltip" :class="{ 'dock-active': activeDock === '/compilation' }">
-      <div class="tooltip-content">
-        Compilations
-      </div>
+    <NuxtLink to="/compilation" class="tooltip" :class="{ 'active': activeDock === '/compilation' }"
+      data-tip="Compilations">
       <object class="icon" data="/cassette.svg" type="image/svg+xml" aria-label="compilations" />
     </NuxtLink>
 
-    <NuxtLink to="/collection" class="tooltip" :class="{ 'dock-active': activeDock === '/collection' }">
-      <div class="tooltip-content">
-        Collection
-      </div>
+    <NuxtLink to="/collection" class="tooltip" :class="{ 'active': activeDock === '/collection' }"
+      data-tip="Collection">
       <object class="icon" data="/cards.svg" type="image/svg+xml" aria-label="collection" />
     </NuxtLink>
   </nav>
@@ -35,14 +28,7 @@ const activeDock = computed(() => route.path)
   height: 40px;
 }
 
-.dock-active {
-  &::before {
-    content: '';
-    background-color: black;
-    height: 4px;
-    width: 50%;
-    position: absolute;
-    bottom: 0;
-  }
+.tooltip {
+  display: flex;
 }
 </style>

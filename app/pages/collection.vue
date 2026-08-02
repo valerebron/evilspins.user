@@ -1,8 +1,8 @@
 <template>
   <article v-for="card in collectedCards" :key="card.slug || card.esid" class="collection-card">
-    <Card :card="card" :is-face-up="true" :show-play-button="false" :buttons="['select', 'play']"
-      @button-click="cardAction" />
+    <Card :card="card" :is-face-up="true" :show-play-button="false" click-behavior="self-play" />
   </article>
+  <CollectionActions class="fixed bottom-20" />
 </template>
 
 <script setup lang="ts">
@@ -39,3 +39,9 @@ onMounted(() => {
   ensureLoaded()
 })
 </script>
+
+<style scoped>
+.collection-card .card {
+  width: 160px;
+}
+</style>
