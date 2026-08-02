@@ -44,10 +44,5 @@ const activeDock = computed(() => route.path)
     position: absolute;
     bottom: 0;
   }
-
-  &:active,
-  &:focus {
-    /* background-color: rgba(148, 148, 148, 0.247); */
-  }
 }
 </style>

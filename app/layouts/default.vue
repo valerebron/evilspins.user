@@ -27,6 +27,7 @@ useOutsideClick(() => {
   flex-wrap: nowrap;
   flex-direction: column;
   overflow-x: auto;
+  margin-bottom: 64px;
 
   @screen sm {
     flex-wrap: wrap;
