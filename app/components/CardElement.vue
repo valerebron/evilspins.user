@@ -12,12 +12,25 @@
         <Rank :card="props.card" />
 
         <!-- Cover -->
-        <figure class="cover">
-          <PlayButton :is-loading="isLoading" :is-playing="props.isPlaying" />
+        <figure class="cover relative">
+          <div class="action-buttons z-20" :class="{
+            'action-buttons--play': usePlayButton,
+            'action-buttons--custom': !usePlayButton,
+            'action-buttons--loading-play': usePlayButton && isLoading
+          }">
+            <PlayButton v-if="usePlayButton" :is-loading="isLoading" :is-playing="props.isPlaying" interactive
+              aria-label="play" @click.stop="emitButtonClick(visibleButtons[0] ?? 'play')" />
+            <template v-else>
+              <button v-for="buttonName in visibleButtons" :key="buttonName" type="button"
+                class="btn btn-sm btn-neutral action-button capitalize" @click.stop="emitButtonClick(buttonName)">
+                {{ buttonName }}
+              </button>
+            </template>
+          </div>
           <img v-if="props.card.url_image?.startsWith('blob:')" :src="props.card.url_image" alt="card cover"
-            class="cover-image w-full h-full object-cover object-center" draggable="false" />
+            class="cover-image relative z-0 w-full h-full object-cover object-center" draggable="false" />
           <UnLazyImage v-else :src="props.card.url_image" alt="card cover" loading="lazy"
-            :blurhash="props.card.blurhash" class="cover-image w-full h-full object-cover object-center"
+            :blurhash="props.card.blurhash" class="cover-image relative z-0 w-full h-full object-cover object-center"
             draggable="false" />
         </figure>
 
@@ -48,7 +61,7 @@
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click', 'button-click'])
 const route = useRoute()
 
 const props = withDefaults(defineProps<{
@@ -58,6 +71,7 @@ const props = withDefaults(defineProps<{
   isLoading?: boolean;
   isDisabled?: boolean;
   isPlaying?: boolean;
+  buttons?: string[];
   role?: string;
   tabindex?: string | number;
 }>(), {
@@ -65,6 +79,7 @@ const props = withDefaults(defineProps<{
   isFaceUp: false,
   isDisabled: false,
   isPlaying: false,
+  buttons: () => ['play'],
   role: 'button',
   tabindex: '0'
 })
@@ -74,6 +89,15 @@ import { getYearColor } from '~/utils/colors'
 const cardColor = computed(() => props.backColor || getYearColor(props.card.year || 0))
 const isBoxRoute = computed(() => route.path.startsWith('/compilation'))
 const faceDownImageSrc = computed(() => isBoxRoute.value ? '/face-down-tarot.svg' : '/face-down.svg')
+const visibleButtons = computed(() => props.buttons?.length ? props.buttons : ['play'])
+const usePlayButton = computed(() => visibleButtons.value.length === 1 && visibleButtons.value[0] === 'play')
+
+const emitButtonClick = (button: string) => {
+  emit('button-click', {
+    button,
+    card: props.card
+  })
+}
 
 const onCardClick = (event: MouseEvent) => {
   if (props.isDisabled) {
@@ -186,8 +210,14 @@ const onCardEnter = (event: KeyboardEvent) => {
   .face-up {
 
     &:hover {
-      .play-button {
+
+      .play-button,
+      .action-buttons {
         opacity: 1;
+      }
+
+      .action-buttons {
+        pointer-events: auto;
       }
     }
 
@@ -212,8 +242,68 @@ const onCardEnter = (event: KeyboardEvent) => {
   .play-button {
     @apply absolute opacity-0 hover:opacity-100;
 
-    .show-play-button & {
+    &.loading {
+      opacity: 1 !important;
+    }
+
+  }
+
+  .action-buttons {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+    inset: 0;
+    padding: 20px;
+
+    .action-button {
+      @apply bg-black/50 transition-all duration-100 ease-in-out transform active:scale-90 font-bold scale-110 text-white;
+      pointer-events: auto;
+      border-radius: 10px;
+      aspect-ratio: 1;
+      width: 100%;
+    }
+
+    .show-play-button &.action-buttons--play {
       @apply opacity-100;
+    }
+
+    &.action-buttons--loading-play {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    .action-buttons--custom {
+      .action-button {
+        pointer-events: none;
+      }
+    }
+
+    .face-up:hover {
+      .action-buttons--custom {
+        opacity: 0;
+        pointer-events: none;
+      }
+    }
+
+    &:active:not(.is-disabled),
+    &:focus:not(.is-disabled),
+    &.current-card:not(.is-disabled) {
+      .action-buttons--custom {
+        opacity: 1;
+        pointer-events: auto;
+
+        .action-button {
+          pointer-events: auto;
+        }
+      }
     }
   }
 

@@ -39,6 +39,7 @@ const number = computed(() => {
 .rank {
   transition: opacity 0.5s ease-in-out;
   container-type: inline-size;
+  z-index: 10;
 }
 
 .number {

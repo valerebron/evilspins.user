@@ -1,6 +1,7 @@
 <template>
   <article v-for="card in collectedCards" :key="card.slug || card.esid" class="collection-card">
-    <Card :card="card" :is-face-up="true" :show-play-button="false" />
+    <Card :card="card" :is-face-up="true" :show-play-button="false" :buttons="['select', 'play']"
+      @button-click="cardAction" />
   </article>
 </template>
 
@@ -29,6 +30,10 @@ const collectedCards = computed<CardType[]>(() => {
     return slug.length > 0 && flippedSlugs.value.has(slug)
   })
 })
+
+const cardAction = (payload: { button: string; card: CardType }) => {
+  console.log(payload)
+}
 
 onMounted(() => {
   ensureLoaded()

@@ -1,9 +1,9 @@
 <template>
   <section class="card text-center"
     :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted, 'show-play-button': showPlayButton, 'is-disabled': isDisabled }">
-    <CardElement :card="props.card!" :is-face-up="isFaceUp" @click="clickOnCard" :role="isOpen ? 'img' : 'button'"
+    <CardElement :card="props.card!" :buttons="props.buttons" :is-face-up="isFaceUp" :role="isOpen ? 'img' : 'button'"
       :is-loading="isLoading" :back-color="props.backColor" :is-disabled="isDisabled" :is-playing="props.isPlaying"
-      :class="{ 'current-card': props.isCurrent }" />
+      :class="{ 'current-card': props.isCurrent }" @click="clickOnCard" @button-click="onButtonClick" />
     <Platine v-if="isPlatineMounted" ref="platineRef" :card="card" :active="isOpen"
       :class="{ 'fading-out': isPlatineFading }" @loaded="onTrackLoaded" @finishPlaying="onFinishPlaying"
       v-show="isOpen || isPlatineFading" />
@@ -16,21 +16,24 @@ import { timeout } from '~/utils/timeout'
 import { useSplashScreen } from '~/composables/useSplashScreen'
 import CardElement from './CardElement.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   card: Card,
   backColor?: string | null,
   isFaceUp?: boolean,
   isCurrent?: boolean,
   isPlaying?: boolean,
+  buttons?: string[],
   clickBehavior?: 'flip-only' | 'self-play' | 'external-player',
   navigateOnClick?: boolean,
   navigateTarget?: string,
   autoplay?: boolean,
   showPlayButton?: boolean,
   disabled?: boolean,
-}>()
+}>(), {
+  buttons: () => ['play']
+})
 
-const emit = defineEmits(['open', 'close', 'play-request', 'flip'])
+const emit = defineEmits(['open', 'close', 'play-request', 'flip', 'button-click'])
 const { isSplashDone, waitForSplashDone } = useSplashScreen()
 const { markCardFlipped, markCardPlayedToEnd } = usePersistentCardState()
 
@@ -122,6 +125,10 @@ const revealCardIfNeeded = () => {
   isFaceUp.value = true
   markCardFlipped(cardId.value)
   emit('flip', props.card)
+}
+
+const onButtonClick = (payload: { button: string; card: Card }) => {
+  emit('button-click', payload)
 }
 
 const shouldClose = computed(() => {

@@ -1,5 +1,6 @@
 <template>
-  <button tabindex="-1" class="play-button" :class="{ loading: isLoading }" :disabled="isLoading">
+  <button :tabindex="props.interactive ? 0 : -1" class="play-button"
+    :class="{ loading: isLoading, interactive: props.interactive }" :disabled="isLoading" type="button">
     <Loader v-if="props.isLoading" />
     <template v-else>
       <PlayPauseIcon :isPlaying class="fill-esyellow" />
@@ -11,9 +12,11 @@
 const props = withDefaults(defineProps<{
   isLoading?: boolean;
   isPlaying?: boolean;
+  interactive?: boolean;
 }>(), {
   isLoading: false,
-  isPlaying: false
+  isPlaying: false,
+  interactive: false
 })
 </script>
 
@@ -28,6 +31,10 @@ const props = withDefaults(defineProps<{
   display: flex;
   align-items: center;
   justify-content: center;
+
+  &.interactive {
+    pointer-events: auto;
+  }
 
   &::after {
     @apply bg-esyellow;
