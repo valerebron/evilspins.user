@@ -44,4 +44,9 @@ onMounted(() => {
 .collection-card .card {
   width: 160px;
 }
+
+.card.open {
+  transform: scale(1.5);
+  z-index: 10;
+}
 </style>

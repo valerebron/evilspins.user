@@ -490,8 +490,6 @@ $card-mount-speed: 0.2s;
   }
 
   &.open {
-    transform: scale(1.5);
-    z-index: 10;
 
     .card-element {
       pointer-events: none;
