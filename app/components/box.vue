@@ -6,10 +6,16 @@
       <div class="scene__canvas">
         <div class="box" :class="boxClasses" :style="boxStyle" @transitionstart="onBoxTransitionStart"
           @transitionend="onBoxTransitionEnd" @transitioncancel="onBoxTransitionEnd">
-          <div class="box__face box__face--front"></div>
-          <div class="box__face box__face--back"></div>
+          <div class="box__face box__face--front">
+            <img v-if="frontCoverUrl" class="box-face-cover box-face-cover--front" :src="frontCoverUrl"
+              alt="box front cover" draggable="false" />
+          </div>
+          <div class="box__face box__face--back">
+            <img v-if="backCoverUrl" class="box-face-cover box-face-cover--back" :src="backCoverUrl"
+              alt="box back cover" draggable="false" />
+          </div>
           <div class="box__face box__face--right">right</div>
-          <div class="box__face box__face--left">left</div>
+          <div class="box__face box__face--left" :style="leftFaceStyle">left</div>
           <div class="box__face box__face--top">{{ box?.name }}</div>
           <div class="box__face box__face--bottom"></div>
 
@@ -17,23 +23,13 @@
             <div v-for="(item, index) in stackedCards" :key="item.esid || `${item.slug}-${index}`" class="stacked-card"
               :style="getCardStyle(index)">
               <div class="stacked-card-face stacked-card-face--front">
-                <div v-if="index === 0 && coverFrontUrl" class="stacked-card-cover stacked-card-cover--front">
-                  <img class="stacked-card-cover__image" :src="coverFrontUrl" alt="box front cover" draggable="false" />
-                </div>
-                <card v-else-if="index === 0" :card="item" :back-color="activeFaceColor" :is-face-up="true"
-                  :show-play-button="false" />
-                <BoxBlurhashCard v-else :blurhash="item.blurhash" :card-year="item.year" :is-face-up="true" />
+                <BoxBlurhashCard :blurhash="item.blurhash" :card-year="item.year" :is-face-up="true" />
                 <div v-if="index === 0 && selectedMode === 'selected'" class="stacked-card-play-overlay">
                   <PlayButton />
                 </div>
               </div>
               <div class="stacked-card-face stacked-card-face--back">
-                <div v-if="index === lastCardIndex && coverBackUrl" class="stacked-card-cover stacked-card-cover--back">
-                  <img class="stacked-card-cover__image" :src="coverBackUrl" alt="box back cover" draggable="false" />
-                </div>
-                <card v-else-if="index === 0" :card="item" :back-color="activeFaceColor" :is-face-up="false"
-                  :show-play-button="false" />
-                <BoxBlurhashCard v-else :blurhash="item.blurhash" :card-year="item.year" :is-face-up="false" />
+                <card :card="item" :back-color="activeFaceColor" :is-face-up="false" :show-play-button="false" />
               </div>
             </div>
           </div>
@@ -55,11 +51,11 @@ const emit = defineEmits<{
   (event: 'toggle-select', face: CompilationSide): void
 }>()
 
-const { resolveMediaUrl } = useMediaUrl()
-
 type BoxSide = 'front' | 'right' | 'back' | 'left' | 'top' | 'bottom'
 type BoxMode = 'stored' | 'selected'
 type CompilationSide = 'A' | 'B'
+
+const { resolveMediaUrl } = useMediaUrl()
 
 const isAnimating = ref(false)
 const BASE_ORIENTATION = 270
@@ -171,8 +167,6 @@ const stackedCards = computed(() => {
 
   return cards
 })
-const lastCardIndex = computed(() => Math.max(0, stackedCards.value.length - 1))
-
 const getNearestEquivalentAngle = (currentAngle: number, baseAngle: number) => {
   const turns = Math.round((currentAngle - baseAngle) / FULL_TURN_DEGREES)
   return baseAngle + turns * FULL_TURN_DEGREES
@@ -217,6 +211,35 @@ const requestToggleSelection = () => {
 
   emit('toggle-select', activeCompilationSide.value)
 }
+
+const resolveCoverBySide = (coverPath: string, side: CompilationSide, face: 'front' | 'back'): string => {
+  if (side !== 'B') return coverPath
+
+  const withExplicitSuffix = coverPath.replace(
+    new RegExp(`${face}-a(\\.[^./]+)$`, 'i'),
+    `${face}-b$1`,
+  )
+  if (withExplicitSuffix !== coverPath) return withExplicitSuffix
+
+  return coverPath.replace(
+    new RegExp(`${face}(\\.[^./]+)$`, 'i'),
+    `${face}-b$1`,
+  )
+}
+
+const frontCoverUrl = computed(() => {
+  const coverPath = resolveCoverBySide(props.box?.cover_front || '', activeCompilationSide.value, 'front')
+  return resolveMediaUrl(coverPath)
+})
+
+const backCoverUrl = computed(() => {
+  const coverPath = resolveCoverBySide(props.box?.cover_back || '', activeCompilationSide.value, 'back')
+  return resolveMediaUrl(coverPath)
+})
+
+const leftFaceStyle = computed(() => ({
+  backgroundColor: activeFaceColor.value || '#d9d2c4',
+}))
 
 const stopSpinInertia = () => {
   if (inertiaFrame) {
@@ -371,29 +394,6 @@ const getCardStyle = (index: number) => {
   }
 }
 
-const resolveCoverBySide = (coverPath: string, side: CompilationSide, face: 'front' | 'back'): string => {
-  if (side !== 'B') return coverPath
-
-  const withExplicitSuffix = coverPath.replace(
-    new RegExp(`${face}-a(\\.[^./]+)$`, 'i'),
-    `${face}-b$1`,
-  )
-  if (withExplicitSuffix !== coverPath) return withExplicitSuffix
-
-  return coverPath.replace(
-    new RegExp(`${face}(\\.[^./]+)$`, 'i'),
-    `${face}-b$1`,
-  )
-}
-
-const coverFrontUrl = computed(() => {
-  const coverPath = resolveCoverBySide(props.box?.cover_front || '', activeCompilationSide.value, 'front')
-  return resolveMediaUrl(coverPath)
-})
-const coverBackUrl = computed(() => {
-  const coverPath = resolveCoverBySide(props.box?.cover_back || '', activeCompilationSide.value, 'back')
-  return resolveMediaUrl(coverPath)
-})
 </script>
 
 <style scoped lang="scss">
@@ -508,7 +508,7 @@ const coverBackUrl = computed(() => {
 .box__face--back {
   width: 300px;
   height: 200px;
-  border-radius: 30px;
+  // border-radius: 30px;
   // opacity: 0;
 }
 
@@ -535,10 +535,25 @@ const coverBackUrl = computed(() => {
 .box__face--front {
   // background: hsla(0, 100%, 50%, 0.3);
   display: block;
-  padding: 8px;
   overflow: hidden;
-  background-size: cover;
-  background-position: bottom;
+}
+
+.box-face-cover {
+  display: block;
+  width: 100%;
+  height: 100%;
+  // object-fit: contain;
+  object-position: center;
+}
+
+.box-face-cover--front {
+  // transform: rotate(90deg) scale(1.35);
+  transform-origin: center;
+}
+
+.box-face-cover--back {
+  // transform: rotate(90deg) scale(1.35);
+  transform-origin: center;
 }
 
 .box__face--right {
