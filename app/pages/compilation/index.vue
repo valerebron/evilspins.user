@@ -400,12 +400,13 @@ onBeforeUnmount(() => {
 
 .mix-shelf {
   display: flex;
-  // flex-direction: row;
-  // align-items: flex-end;
   gap: 1rem;
-  // overflow-y: visible;
-  // padding: 0.5rem 0.75rem 0.25rem;
-  // scrollbar-width: thin;
+  min-width: 100vw;
+  height: 100svh;
+  overflow-y: hidden;
+  overflow-x: visible;
+  align-items: center;
+  justify-content: center;
 }
 
 .mix-page {
