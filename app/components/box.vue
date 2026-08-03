@@ -608,9 +608,9 @@ const getCardStyle = (index: number) => {
   --box-half-thickness: calc(var(--box-thickness) / 2);
   --box-half-width: calc(var(--box-width) / 2);
   --box-hover-advance: 40px;
-  --box-hover-advance-max: 178px;
+  --box-hover-advance-max: 110px;
   --box-hover-shift-x: 0px;
-  --box-hover-shift-x-max: -22px;
+  --box-hover-shift-x-max: -30px;
   --box-hover-transition-duration: 0.4s;
   --box-state-transition-duration: 1s;
 
