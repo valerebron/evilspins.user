@@ -1,10 +1,10 @@
 <template>
-  <section class="box-stage" @click="requestToggleSelection">
+  <section class="box-stage">
     <div ref="sceneRef" class="scene" :class="sceneClasses" :style="sceneStyle" @pointerdown="onSpinPointerDown"
       @pointermove="onSpinPointerMove" @pointerup="onSpinPointerUp" @pointercancel="onSpinPointerUp"
       @lostpointercapture="onSpinPointerUp">
-      <div class="scene__canvas">
-        <div class="box" :class="boxClasses" :style="boxStyle" @transitionstart="onBoxTransitionStart"
+      <div class="scene__canvas" @click="requestToggleSelection">
+        <div ref="boxRef" class="box" :class="boxClasses" :style="boxStyle" @transitionstart="onBoxTransitionStart"
           @transitionend="onBoxTransitionEnd" @transitioncancel="onBoxTransitionEnd">
           <div class="box__face box__face--front">
             <img v-if="frontCoverUrl" class="box-face-cover box-face-cover--front" :src="frontCoverUrl"
@@ -14,19 +14,17 @@
             <img v-if="backCoverUrl" class="box-face-cover box-face-cover--back" :src="backCoverUrl"
               alt="box back cover" draggable="false" />
           </div>
-          <div class="box__face box__face--right">right</div>
-          <div class="box__face box__face--left" :style="leftFaceStyle">left</div>
-          <div class="box__face box__face--top">{{ box?.name }}</div>
-          <div class="box__face box__face--bottom"></div>
+          <div class="box__face box__face--right" :style="rightFaceStyle"></div>
+          <div class="box__face box__face--left"></div>
+          <div class="box__face box__face--top" :style="topFaceStyle">{{ box?.name }}</div>
+          <div class="box__face box__face--bottom" :style="bottomFaceStyle">{{ box?.name }}</div>
 
-          <div v-if="stackedCards.length" class="box__cards-volume">
+          <div v-if="shouldRenderCardsVolume" class="box__cards-volume"
+            :class="{ 'box__cards-volume--revealed': isCardsVolumeRevealed }">
             <div v-for="(item, index) in stackedCards" :key="item.esid || `${item.slug}-${index}`" class="stacked-card"
               :style="getCardStyle(index)">
               <div class="stacked-card-face stacked-card-face--front">
                 <BoxBlurhashCard :blurhash="item.blurhash" :card-year="item.year" :is-face-up="true" />
-                <div v-if="index === 0 && selectedMode === 'selected'" class="stacked-card-play-overlay">
-                  <PlayButton />
-                </div>
               </div>
               <div class="stacked-card-face stacked-card-face--back">
                 <card :card="item" :back-color="activeFaceColor" :is-face-up="false" :show-play-button="false" />
@@ -42,18 +40,29 @@
 <script setup lang="ts">
 import type { BoxDetails } from '~~/types/types'
 
+type BoxSide = 'front' | 'right' | 'back' | 'left' | 'top' | 'bottom'
+type BoxMode = 'stored' | 'selected'
+type CompilationSide = 'A' | 'B'
+
+type BoxRotation = {
+  x: number
+  y: number
+  z: number
+}
+
+type BoxRotationMap = Partial<Record<BoxMode, Partial<BoxRotation>>>
+
 const props = defineProps<{
   box?: BoxDetails | null
   isSelected?: boolean
+  forcedMode?: BoxMode
+  modeRotations?: BoxRotationMap
+  disableInteraction?: boolean
 }>()
 
 const emit = defineEmits<{
   (event: 'toggle-select', face: CompilationSide): void
 }>()
-
-type BoxSide = 'front' | 'right' | 'back' | 'left' | 'top' | 'bottom'
-type BoxMode = 'stored' | 'selected'
-type CompilationSide = 'A' | 'B'
 
 const { resolveMediaUrl } = useMediaUrl()
 
@@ -64,6 +73,8 @@ const FULL_TURN_DEGREES = 360
 const HALF_TURN_DEGREES = 180
 const SIDE_SWITCH_ENERGY_THRESHOLD = 0.16
 const SIDE_SWITCH_MIN_DRAG_DISTANCE = 140
+const Z_INDEX_OPEN_RATIO = 0.1
+const Z_INDEX_CLOSE_RATIO = 0.57
 const faceDimensions: Record<BoxSide, { widthFactor: number, heightFactor: number }> = {
   front: { widthFactor: 1.5, heightFactor: 1 },
   back: { widthFactor: 1.5, heightFactor: 1 },
@@ -73,7 +84,20 @@ const faceDimensions: Record<BoxSide, { widthFactor: number, heightFactor: numbe
   bottom: { widthFactor: 1.5, heightFactor: 0.5 },
 }
 
-const selectedMode = computed<BoxMode>(() => (props.isSelected ? 'selected' : 'stored'))
+const selectedMode = computed<BoxMode>(() => (props.forcedMode || (props.isSelected ? 'selected' : 'stored')))
+const hasRotationOverrides = computed(() => Boolean(props.modeRotations))
+const isSpinInteractionEnabled = computed(() => {
+  return selectedMode.value === 'selected' && !props.disableInteraction
+})
+
+const activeModeRotation = computed<BoxRotation>(() => {
+  const rawRotation = props.modeRotations?.[selectedMode.value]
+  return {
+    x: Number(rawRotation?.x ?? 0),
+    y: Number(rawRotation?.y ?? 0),
+    z: Number(rawRotation?.z ?? 0),
+  }
+})
 const requestedCompilationSide = ref<CompilationSide>('A')
 const availableCompilationSides = computed<Set<CompilationSide>>(() => {
   const sides = new Set<CompilationSide>()
@@ -116,22 +140,37 @@ const dragStartX = ref(0)
 const dragDistance = ref(0)
 const suppressSelectionClick = ref(false)
 const sceneRef = ref<HTMLElement | null>(null)
+const boxRef = ref<HTMLElement | null>(null)
 const spinVelocity = ref(0)
+const elevateSelectedZIndex = ref(false)
+const shouldRenderCardsVolume = ref(false)
+const isCardsVolumeRevealed = ref(false)
+let selectedZIndexTimer: ReturnType<typeof setTimeout> | null = null
+let cardsUnmountTimer: ReturnType<typeof setTimeout> | null = null
+let cardsRevealFrameA = 0
+let cardsRevealFrameB = 0
 let inertiaFrame = 0
 const sceneClasses = computed(() => ({
   'scene--animating': isAnimating.value || isSpinInertiaActive.value,
-  'scene--spin-enabled': selectedMode.value === 'selected',
+  'scene--selected-priority': elevateSelectedZIndex.value,
+  'scene--selected': selectedMode.value === 'selected',
+  'scene--spin-enabled': isSpinInteractionEnabled.value,
 }))
 const boxClasses = computed(() => [
   showClass.value,
   {
     'box--dragging': isSpinDragging.value || isSpinInertiaActive.value,
+    'box--rotation-overrides': hasRotationOverrides.value,
   },
 ])
 const effectiveOrientation = computed(() => (BASE_ORIENTATION + selectedOrientation.value) % 360)
+const effectiveSceneOrientation = computed(() => {
+  const zRotation = activeModeRotation.value.z
+  return ((effectiveOrientation.value + zRotation) % 360 + 360) % 360
+})
 const sceneHeightFactor = computed(() => {
   const dimensions = faceDimensions[selectedSide.value]
-  const isQuarterTurn = effectiveOrientation.value === 90 || effectiveOrientation.value === 270
+  const isQuarterTurn = effectiveSceneOrientation.value === 90 || effectiveSceneOrientation.value === 270
 
   return isQuarterTurn ? dimensions.widthFactor : dimensions.heightFactor
 })
@@ -144,6 +183,9 @@ const boxStyle = computed(() => ({
   '--box-base-orientation': `${BASE_ORIENTATION}deg`,
   '--box-drag-spin': `${spinAngle.value}deg`,
   '--box-orientation': `${selectedOrientation.value}deg`,
+  '--box-rotation-x': `${activeModeRotation.value.x}deg`,
+  '--box-rotation-y': `${activeModeRotation.value.y}deg`,
+  '--box-rotation-z': `${activeModeRotation.value.z}deg`,
 }))
 const stackedCards = computed(() => {
   const cards = props.box?.cards ?? []
@@ -167,6 +209,8 @@ const stackedCards = computed(() => {
 
   return cards
 })
+
+const hasStackedCards = computed(() => stackedCards.value.length > 0)
 const getNearestEquivalentAngle = (currentAngle: number, baseAngle: number) => {
   const turns = Math.round((currentAngle - baseAngle) / FULL_TURN_DEGREES)
   return baseAngle + turns * FULL_TURN_DEGREES
@@ -237,8 +281,21 @@ const backCoverUrl = computed(() => {
   return resolveMediaUrl(coverPath)
 })
 
-const leftFaceStyle = computed(() => ({
-  backgroundColor: activeFaceColor.value || '#d9d2c4',
+const boxSideBaseColor = computed(() => activeFaceColor.value || '#d9d2c4')
+
+const topFaceStyle = computed(() => ({
+  backgroundColor: boxSideBaseColor.value,
+  boxShadow: 'inset 0 0 0 999px rgba(255, 255, 255, 0.18)',
+}))
+
+const bottomFaceStyle = computed(() => ({
+  backgroundColor: boxSideBaseColor.value,
+  boxShadow: 'inset 0 0 0 999px rgba(0, 0, 0, 0.08)',
+}))
+
+const rightFaceStyle = computed(() => ({
+  backgroundColor: boxSideBaseColor.value,
+  boxShadow: 'inset 0 0 0 999px rgba(0, 0, 0, 0.16)',
 }))
 
 const stopSpinInertia = () => {
@@ -252,7 +309,7 @@ const stopSpinInertia = () => {
 }
 
 const startSpinInertia = (settleToDefaultAxis = false) => {
-  if (selectedMode.value !== 'selected') return
+  if (!isSpinInteractionEnabled.value) return
 
   const settleTarget = settleToDefaultAxis
     ? getNearestEquivalentAngle(spinAngle.value, DEFAULT_SELECTED_SPIN_ANGLE)
@@ -300,7 +357,7 @@ const startSpinInertia = (settleToDefaultAxis = false) => {
 }
 
 const onSpinPointerDown = (event: PointerEvent) => {
-  if (selectedMode.value !== 'selected') return
+  if (!isSpinInteractionEnabled.value) return
 
   stopSpinInertia()
   isSpinDragging.value = true
@@ -329,8 +386,8 @@ const onSpinPointerMove = (event: PointerEvent) => {
 
   const now = performance.now()
   const elapsed = Math.max(now - lastPointerTime.value, 1)
-  spinAngle.value -= deltaX * 0.45
-  spinVelocity.value = (-deltaX * 0.45) / elapsed
+  spinAngle.value += deltaX * 0.45
+  spinVelocity.value = (deltaX * 0.45) / elapsed
   lastPointerX.value = event.clientX
   lastPointerTime.value = now
 }
@@ -354,7 +411,7 @@ const onSpinPointerUp = (event: PointerEvent) => {
 
 watch(selectedMode, (mode) => {
   if (mode === 'selected') {
-    spinAngle.value = DEFAULT_SELECTED_SPIN_ANGLE
+    spinAngle.value = hasRotationOverrides.value ? 0 : DEFAULT_SELECTED_SPIN_ANGLE
     return
   }
 
@@ -370,8 +427,41 @@ watch(() => props.box?.id, () => {
   requestedCompilationSide.value = 'A'
 })
 
+watch(hasRotationOverrides, (enabled) => {
+  if (!enabled) {
+    return
+  }
+
+  stopSpinInertia()
+  isSpinDragging.value = false
+  activePointerId.value = null
+  suppressSelectionClick.value = false
+  spinAngle.value = 0
+  dragDistance.value = 0
+})
+
 onBeforeUnmount(() => {
   stopSpinInertia()
+
+  if (selectedZIndexTimer) {
+    clearTimeout(selectedZIndexTimer)
+    selectedZIndexTimer = null
+  }
+
+  if (cardsUnmountTimer) {
+    clearTimeout(cardsUnmountTimer)
+    cardsUnmountTimer = null
+  }
+
+  if (cardsRevealFrameA) {
+    cancelAnimationFrame(cardsRevealFrameA)
+    cardsRevealFrameA = 0
+  }
+
+  if (cardsRevealFrameB) {
+    cancelAnimationFrame(cardsRevealFrameB)
+    cardsRevealFrameB = 0
+  }
 })
 
 const onBoxTransitionStart = (event: TransitionEvent) => {
@@ -383,6 +473,110 @@ const onBoxTransitionEnd = (event: TransitionEvent) => {
   if (event.propertyName !== 'transform') return
   isAnimating.value = false
 }
+
+const getBoxTransitionDurationMs = () => {
+  const node = boxRef.value
+  if (!node) {
+    return 0
+  }
+
+  const transitionDurationRaw = getComputedStyle(node).transitionDuration
+  const firstDuration = transitionDurationRaw.split(',')[0]?.trim() || '0s'
+  const durationMs = firstDuration.endsWith('ms')
+    ? Number.parseFloat(firstDuration)
+    : Number.parseFloat(firstDuration) * 1000
+
+  if (!Number.isFinite(durationMs) || durationMs <= 0) {
+    return 0
+  }
+
+  return durationMs
+}
+
+const getZIndexDelayMs = (ratio: number) => {
+  const durationMs = getBoxTransitionDurationMs()
+  return Math.max(durationMs * ratio, 0)
+}
+
+watch(selectedMode, (mode, previousMode) => {
+  if (selectedZIndexTimer) {
+    clearTimeout(selectedZIndexTimer)
+    selectedZIndexTimer = null
+  }
+
+  const openDelayMs = getZIndexDelayMs(Z_INDEX_OPEN_RATIO)
+  const closeDelayMs = getZIndexDelayMs(Z_INDEX_CLOSE_RATIO)
+
+  if (mode === 'selected') {
+    // Opening: become topmost slightly before mid animation.
+    elevateSelectedZIndex.value = false
+    selectedZIndexTimer = setTimeout(() => {
+      elevateSelectedZIndex.value = true
+      selectedZIndexTimer = null
+    }, openDelayMs)
+    return
+  }
+
+  if (previousMode === 'selected') {
+    // Closing: keep topmost for first half, then drop.
+    elevateSelectedZIndex.value = true
+    selectedZIndexTimer = setTimeout(() => {
+      elevateSelectedZIndex.value = false
+      selectedZIndexTimer = null
+    }, closeDelayMs)
+    return
+  }
+
+  elevateSelectedZIndex.value = false
+})
+
+watch([selectedMode, hasStackedCards], async ([mode, hasCards]) => {
+  if (cardsUnmountTimer) {
+    clearTimeout(cardsUnmountTimer)
+    cardsUnmountTimer = null
+  }
+
+  if (cardsRevealFrameA) {
+    cancelAnimationFrame(cardsRevealFrameA)
+    cardsRevealFrameA = 0
+  }
+
+  if (cardsRevealFrameB) {
+    cancelAnimationFrame(cardsRevealFrameB)
+    cardsRevealFrameB = 0
+  }
+
+  if (mode !== 'selected' || !hasCards) {
+    isCardsVolumeRevealed.value = false
+
+    if (!shouldRenderCardsVolume.value) {
+      return
+    }
+
+    const unmountDelayMs = getBoxTransitionDurationMs()
+    cardsUnmountTimer = setTimeout(() => {
+      cardsUnmountTimer = null
+
+      if (selectedMode.value !== 'selected') {
+        shouldRenderCardsVolume.value = false
+      }
+    }, unmountDelayMs)
+    return
+  }
+
+  // Mount cards first, then reveal on the next paint to keep the exit animation smooth.
+  shouldRenderCardsVolume.value = true
+  isCardsVolumeRevealed.value = false
+  await nextTick()
+
+  cardsRevealFrameA = requestAnimationFrame(() => {
+    cardsRevealFrameA = 0
+    cardsRevealFrameB = requestAnimationFrame(() => {
+      cardsRevealFrameB = 0
+      isCardsVolumeRevealed.value = true
+    })
+  })
+}, { immediate: true })
 
 const getCardStyle = (index: number) => {
   const total = stackedCards.value.length
@@ -398,29 +592,47 @@ const getCardStyle = (index: number) => {
 
 <style scoped lang="scss">
 .box-stage {
+  display: flex;
   font-family: sans-serif;
   position: relative;
-  width: 300px;
+  width: 70px;
   justify-self: center;
 }
 
 .scene {
   --box-height: 200px;
-  --box-depth: 100px;
+  --box-depth: 50px;
   --box-width: calc(var(--box-height) * 1.5);
+  --box-thickness: 60px;
+  --box-half-height: calc(var(--box-height) / 2);
+  --box-half-thickness: calc(var(--box-thickness) / 2);
+  --box-half-width: calc(var(--box-width) / 2);
+  --box-hover-advance: 40px;
+  --box-hover-advance-max: 178px;
+  --box-hover-shift-x: 0px;
+  --box-hover-shift-x-max: -22px;
+  --box-hover-transition-duration: 0.4s;
+  --box-state-transition-duration: 1s;
 
   width: var(--box-width);
   height: calc(var(--box-height) * var(--scene-height-factor, 1));
   // border: 1px solid #ccc;
-  overflow: hidden;
-  perspective: 400px;
+  overflow: visible;
+  perspective: 1800px;
+  perspective-origin: 50% 46%;
   position: relative;
   z-index: 1;
   transition: height 1s;
   cursor: pointer;
 
-  &:hover .box__face--top {
-    text-decoration: underline;
+  &:not(.scene--selected) {
+
+    &:hover,
+    &:active,
+    &:focus {
+      --box-hover-advance: var(--box-hover-advance-max);
+      --box-hover-shift-x: var(--box-hover-shift-x-max);
+    }
   }
 
   &.scene--spin-enabled {
@@ -431,13 +643,17 @@ const getCardStyle = (index: number) => {
 }
 
 .scene.scene--animating {
-  z-index: 2;
   overflow: visible;
+}
+
+.scene.scene--selected-priority {
+  z-index: 12;
 }
 
 .scene.scene--spin-enabled {
   touch-action: none;
   cursor: pointer;
+  overflow: visible;
 }
 
 .scene.scene--spin-enabled:active {
@@ -445,11 +661,12 @@ const getCardStyle = (index: number) => {
 }
 
 .scene__canvas {
-  width: var(--box-width);
-  height: var(--box-width);
+  width: 100%;
+  height: 100%;
   position: relative;
-  transform: translateY(calc(var(--box-height) * var(--scene-crop-factor, 0) * -1));
-  transition: transform 1s;
+  transform-style: preserve-3d;
+  transform: translateY(calc(var(--box-height) * var(--scene-crop-factor, 0) * -1)) translateX(var(--box-hover-shift-x)) translateZ(var(--box-hover-advance));
+  transition: transform var(--box-hover-transition-duration) ease;
 }
 
 .box {
@@ -459,8 +676,10 @@ const getCardStyle = (index: number) => {
   left: 0;
   top: calc((var(--box-width) - var(--box-height)) / 2);
   transform-style: preserve-3d;
-  transform: translateZ(-50px) rotateZ(var(--box-base-orientation, 270deg));
-  transition: transform 1s;
+  --box-offset-x: -90px;
+  transform: translateX(var(--box-offset-x)) translateZ(calc(var(--box-half-thickness) * -1)) rotateZ(var(--box-base-orientation, 270deg));
+  transition: transform var(--box-state-transition-duration) ease;
+  will-change: transform;
   user-select: none;
 }
 
@@ -469,33 +688,45 @@ const getCardStyle = (index: number) => {
 }
 
 .box.show-front {
-  transform: translateZ(-50px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateX(var(--box-drag-spin, 0deg));
+  transform: translateX(var(--box-offset-x)) translateZ(calc(var(--box-half-thickness) * -1)) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateY(var(--box-drag-spin, 0deg));
+
+  .box__cards-volume.box__cards-volume--revealed {
+    left: -80px;
+  }
 }
 
 .box.show-back {
-  transform: translateZ(-50px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateX(var(--box-drag-spin, 0deg)) rotateY(-180deg);
+  transform: translateX(var(--box-offset-x)) translateZ(calc(var(--box-half-thickness) * -1)) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateY(calc(var(--box-drag-spin, 0deg) - 180deg));
 }
 
 .box.show-right {
-  transform: translateZ(-150px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateX(var(--box-drag-spin, 0deg)) rotateY(-90deg);
+  transform: translateX(var(--box-offset-x)) translateZ(calc(var(--box-half-width) * -1)) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateY(calc(var(--box-drag-spin, 0deg) - 90deg));
 }
 
 .box.show-left {
-  transform: translateZ(-150px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateX(var(--box-drag-spin, 0deg)) rotateY(90deg);
+  transform: translateX(var(--box-offset-x)) translateZ(calc(var(--box-half-width) * -1)) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateY(calc(var(--box-drag-spin, 0deg) + 90deg));
 }
 
 .box.show-top {
-  transform: translateZ(-100px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg) + var(--box-drag-spin, 0deg))) rotateX(-90deg);
+  transform: translateX(var(--box-offset-x)) translateZ(calc(var(--box-half-height) * -1)) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg) + var(--box-drag-spin, 0deg))) rotateX(-90deg);
 }
 
 .box.show-bottom {
-  transform: translateZ(-100px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg) + var(--box-drag-spin, 0deg))) rotateX(90deg);
+  transform: translateX(var(--box-offset-x)) translateZ(calc(var(--box-half-height) * -1)) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg) + var(--box-drag-spin, 0deg))) rotateX(90deg);
+}
+
+.box.box--rotation-overrides.show-front {
+  transform: translateX(var(--box-offset-x)) translateZ(calc(var(--box-half-thickness) * -1)) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg) + var(--box-rotation-z, 0deg))) rotateY(calc(var(--box-drag-spin, 0deg) + var(--box-rotation-y, 0deg))) rotateX(var(--box-rotation-x, 0deg));
+}
+
+.box.box--rotation-overrides.show-top {
+  transform: translateX(var(--box-offset-x)) translateZ(calc(var(--box-half-height) * -1)) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg) + var(--box-drag-spin, 0deg) + var(--box-rotation-z, 0deg))) rotateY(var(--box-rotation-y, 0deg)) rotateX(calc(-90deg + var(--box-rotation-x, 0deg)));
 }
 
 .box__face {
   position: absolute;
-  // border: 2px solid #000;
-  font-size: 40px;
+  border: 2px solid #000;
+  font-size: 28px;
   font-weight: bold;
   color: #000;
   text-align: center;
@@ -506,30 +737,30 @@ const getCardStyle = (index: number) => {
 
 .box__face--front,
 .box__face--back {
-  width: 300px;
-  height: 200px;
+  width: var(--box-width);
+  height: var(--box-height);
   // border-radius: 30px;
   // opacity: 0;
 }
 
 .box__face--back {
-  line-height: 200px;
+  line-height: var(--box-height);
 }
 
 .box__face--right,
 .box__face--left {
-  width: 100px;
-  height: 200px;
-  left: 100px;
-  line-height: 200px;
+  width: var(--box-thickness);
+  height: var(--box-height);
+  left: calc((var(--box-width) - var(--box-thickness)) / 2);
+  line-height: var(--box-height);
 }
 
 .box__face--top,
 .box__face--bottom {
-  width: 300px;
-  height: 100px;
-  top: 50px;
-  line-height: 100px;
+  width: var(--box-width);
+  height: var(--box-thickness);
+  top: calc((var(--box-height) - var(--box-thickness)) / 2);
+  line-height: var(--box-thickness);
 }
 
 .box__face--front {
@@ -542,22 +773,19 @@ const getCardStyle = (index: number) => {
   display: block;
   width: 100%;
   height: 100%;
-  // object-fit: contain;
-  object-position: center;
+  object-fit: cover;
 }
 
 .box-face-cover--front {
   // transform: rotate(90deg) scale(1.35);
   transform-origin: center;
+  object-position: bottom;
 }
 
 .box-face-cover--back {
   // transform: rotate(90deg) scale(1.35);
   transform-origin: center;
-}
-
-.box__face--right {
-  background: hsla(60, 100%, 50%, 0.3);
+  object-position: center;
 }
 
 // .box__face--back {
@@ -577,27 +805,27 @@ const getCardStyle = (index: number) => {
 // }
 
 .box__face--front {
-  transform: rotateY(0deg) translateZ(50px);
+  transform: rotateY(0deg) translateZ(var(--box-half-thickness));
 }
 
 .box__face--back {
-  transform: rotateY(180deg) translateZ(50px);
+  transform: rotateY(180deg) translateZ(var(--box-half-thickness));
 }
 
 .box__face--right {
-  transform: rotateY(90deg) translateZ(150px);
+  transform: rotateY(90deg) translateZ(var(--box-half-width));
 }
 
 .box__face--left {
-  transform: rotateY(-90deg) translateZ(150px);
+  transform: rotateY(-90deg) translateZ(var(--box-half-width));
 }
 
 .box__face--top {
-  transform: rotateX(90deg) translateZ(100px);
+  transform: rotateX(90deg) translateZ(var(--box-half-height));
 }
 
 .box__face--bottom {
-  transform: rotateX(-90deg) translateZ(100px);
+  transform: rotateX(-90deg) translateZ(var(--box-half-height));
 }
 
 .mode-switch {
@@ -624,9 +852,11 @@ const getCardStyle = (index: number) => {
   width: 100%;
   height: 100%;
   inset: 0;
+  left: 0;
   position: absolute;
   pointer-events: none;
   transform-style: preserve-3d;
+  transition: left var(--box-state-transition-duration) ease;
 }
 
 .stacked-card {
@@ -718,111 +948,5 @@ const getCardStyle = (index: number) => {
   max-height: none;
   max-width: none;
   min-height: 0;
-}
-
-@media (max-width: 540px) {
-  .box-stage {
-    width: 270px;
-  }
-
-  .box-controls {
-    top: 0;
-    width: 100%;
-  }
-
-  .scene {
-    --box-height: 180px;
-    --box-depth: 90px;
-
-    width: var(--box-width);
-    height: calc(var(--box-height) * var(--scene-height-factor, 1));
-  }
-
-  .box {
-    width: var(--box-width);
-    height: var(--box-height);
-  }
-
-  .box__face {
-    font-size: 30px;
-  }
-
-  .box__face--front,
-  .box__face--back {
-    width: var(--box-width);
-    height: var(--box-height);
-  }
-
-  .box__face--back {
-    line-height: var(--box-height);
-  }
-
-  .box__face--right,
-  .box__face--left {
-    width: 90px;
-    height: var(--box-height);
-    left: 90px;
-    line-height: var(--box-height);
-  }
-
-  .box__face--top,
-  .box__face--bottom {
-    width: 270px;
-    height: 90px;
-    top: 45px;
-    line-height: 90px;
-  }
-
-  .box__face--front {
-    transform: rotateY(0deg) translateZ(45px);
-  }
-
-  .box__face--back {
-    transform: rotateY(180deg) translateZ(45px);
-  }
-
-  .box__face--right {
-    transform: rotateY(90deg) translateZ(135px);
-  }
-
-  .box__face--left {
-    transform: rotateY(-90deg) translateZ(135px);
-  }
-
-  .box__face--top {
-    transform: rotateX(90deg) translateZ(90px);
-  }
-
-  .box__face--bottom {
-    transform: rotateX(-90deg) translateZ(90px);
-  }
-
-  .box.show-front {
-    transform: translateZ(-45px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateX(var(--box-drag-spin, 0deg));
-  }
-
-  .box.show-back {
-    transform: translateZ(-45px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateX(var(--box-drag-spin, 0deg)) rotateY(-180deg);
-  }
-
-  .box.show-right {
-    transform: translateZ(-135px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateX(var(--box-drag-spin, 0deg)) rotateY(-90deg);
-  }
-
-  .box.show-left {
-    transform: translateZ(-135px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg))) rotateX(var(--box-drag-spin, 0deg)) rotateY(90deg);
-  }
-
-  .box.show-top {
-    transform: translateZ(-90px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg) + var(--box-drag-spin, 0deg))) rotateX(-90deg);
-  }
-
-  .box.show-bottom {
-    transform: translateZ(-90px) rotateZ(calc(var(--box-base-orientation, 270deg) + var(--box-orientation, 0deg) + var(--box-drag-spin, 0deg))) rotateX(90deg);
-  }
-
-  .stacked-card {
-    --card-width: calc(var(--box-height) * 0.9);
-  }
 }
 </style>

@@ -22,14 +22,16 @@ const route = useRoute()
 const activeDock = computed(() => route.path)
 </script>
 
-<style scoped>
-.icon {
-  pointer-events: none;
-  height: 40px;
-  width: 40px;
-}
+<style scoped lang="scss">
+.btm-nav {
+  .icon {
+    pointer-events: none;
+    height: 40px;
+    width: 40px;
+  }
 
-.tooltip {
-  display: flex;
+  .tooltip {
+    display: flex;
+  }
 }
 </style>

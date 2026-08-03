@@ -5,8 +5,9 @@
     </header>
 
     <section v-if="renderedBoxes.length" ref="shelfRef" class="mix-shelf">
-      <Box :box="item" :is-selected="selectedBoxId === item.id"
-        @toggle-select="(face) => toggleBoxSelection(item.id, face)" v-for="item in renderedBoxes" :key="item.id" />
+      <Box :box="item" v-for="(item, index) in renderedBoxes" :is-selected="selectedBoxId === item.id"
+        :mode-rotations="rotations" :disableInteraction="false"
+        @toggle-select="(face) => toggleBoxSelection(item.id, face)" :key="item.id" :tabindex="index" />
     </section>
 
     <section v-if="isPlaybackOpen" ref="playbackRef" class="mix-playback">
@@ -34,6 +35,13 @@ import type { Card as CardType } from '~~/types/types'
 import type { BoxDetails } from '~~/types/types'
 import TarotDeck from '~/components/player/TarotDeck.vue'
 
+type BoxMode = 'stored' | 'selected'
+type Rotation = {
+  x: number
+  y: number
+  z: number
+}
+
 const boxStore = useBoxStore()
 const route = useRoute()
 const selectedBoxId = ref<string | null>(null)
@@ -58,6 +66,11 @@ const routeBoxId = computed(() => {
   }
 
   return ''
+})
+
+const rotations = ref<Record<BoxMode, Rotation>>({
+  stored: { x: -18, y: -1, z: 90 },
+  selected: { x: 29, y: 18, z: 88 },
 })
 
 const isPlaybackOpen = computed(() => !!playbackBoxId.value)
@@ -386,10 +399,17 @@ onBeforeUnmount(() => {
 }
 
 .mix-shelf {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(444px, 1fr));
-  gap: 0rem;
-  align-items: end;
+  display: flex;
+  // flex-direction: row;
+  // align-items: flex-end;
+  gap: 1rem;
+  // overflow-y: visible;
+  // padding: 0.5rem 0.75rem 0.25rem;
+  // scrollbar-width: thin;
+}
+
+.mix-page {
+  overflow: visible;
 }
 
 .mix-playback {
@@ -399,12 +419,7 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 10px;
   padding: 12px;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.76));
   backdrop-filter: blur(6px);
-}
-
-.mix-playback__deck-wrap {
-  height: min(52svh, 520px);
 }
 
 .mix-playback__cards {
@@ -423,15 +438,5 @@ onBeforeUnmount(() => {
   width: clamp(130px, 16vw, 210px);
   aspect-ratio: 7 / 10;
   min-height: 0;
-}
-
-@media (max-width: 960px) {
-  .mix-shelf {
-    grid-template-columns: 1fr;
-  }
-
-  .mix-playback__deck-wrap {
-    height: min(44svh, 420px);
-  }
 }
 </style>

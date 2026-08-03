@@ -1,5 +1,5 @@
 <template>
-  <section class="page">
+  <section class="page" :class="{ 'page--fullscreen': isFullscreenPage }">
     <slot />
   </section>
   <Dock />
@@ -7,6 +7,11 @@
 
 <script setup lang="ts">
 const { openCardId } = useCardOpenState()
+const route = useRoute()
+
+const isFullscreenPage = computed(() => {
+  return route.path === '/' || route.path.startsWith('/compilation')
+})
 
 useGlobalCardShortcuts()
 
@@ -33,6 +38,10 @@ useOutsideClick(() => {
   justify-content: center;
 
   min-height: calc(100svh - 64px);
+}
+
+.page.page--fullscreen {
+  margin-bottom: 0;
 }
 
 .card {
