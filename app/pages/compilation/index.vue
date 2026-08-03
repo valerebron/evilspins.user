@@ -4,10 +4,14 @@
       <h1>{{ playbackBox.name }}</h1>
     </header>
 
-    <section v-if="renderedBoxes.length" ref="shelfRef" class="mix-shelf">
-      <Box :box="item" v-for="(item, index) in renderedBoxes" :is-selected="selectedBoxId === item.id"
-        :mode-rotations="rotations" :disableInteraction="false"
-        @toggle-select="(face) => toggleBoxSelection(item.id, face)" :key="item.id" :tabindex="index" />
+    <section v-if="renderedBoxes.length" ref="shelfRef" class="mix-shelf"
+      :class="{ 'mix-shelf--has-active': Boolean(selectedBoxId) }">
+      <div v-for="(item, index) in renderedBoxes" :key="item.id" :ref="(el) => setBoxItemRef(item.id, el)"
+        class="mix-shelf__item" :class="{ 'mix-shelf__item--active': selectedBoxId === item.id }"
+        :style="getBoxItemStyle(item.id)">
+        <Box :box="item" :is-selected="selectedBoxId === item.id" :mode-rotations="rotations"
+          :disableInteraction="false" @toggle-select="(face) => toggleBoxSelection(item.id, face)" :tabindex="index" />
+      </div>
     </section>
 
     <section v-if="isPlaybackOpen" ref="playbackRef" class="mix-playback">
@@ -33,6 +37,7 @@
 <script setup lang="ts">
 import type { Card as CardType } from '~~/types/types'
 import type { BoxDetails } from '~~/types/types'
+import type { ComponentPublicInstance } from 'vue'
 import TarotDeck from '~/components/player/TarotDeck.vue'
 
 type BoxMode = 'stored' | 'selected'
@@ -49,12 +54,18 @@ const selectedBoxFace = ref<'A' | 'B'>('A')
 const shelfRef = ref<HTMLElement | null>(null)
 const playbackRef = ref<HTMLElement | null>(null)
 const tarotDeckRef = ref<InstanceType<typeof TarotDeck> | null>(null)
+const boxItemRefs = ref<Record<string, HTMLElement | null>>({})
+const elevatedBoxIds = ref<Record<string, boolean>>({})
 const playbackBoxId = ref<string | null>(null)
 const playbackBoxFace = ref<'A' | 'B'>('A')
 const playbackStartSlug = ref<string | null>(null)
 const playbackIsPlaying = ref(false)
+const selectedBoxMoveX = ref<Record<string, number>>({})
 const { ensureLoaded, stateBySlug } = usePersistentCardState()
 const routeSyncReady = ref(false)
+const BOX_Z_INDEX_OPEN_DELAY_MS = 100
+const BOX_Z_INDEX_CLOSE_DELAY_MS = 570
+const boxElevationTimers: Record<string, ReturnType<typeof setTimeout> | null> = {}
 
 const routeBoxId = computed(() => {
   const id = route.params.id
@@ -102,6 +113,80 @@ const playbackCards = computed<CardType[]>(() => {
 const playbackFaceColor = computed(() => {
   return playbackBox.value?.color?.[playbackBoxFace.value] || null
 })
+
+const setBoxItemRef = (boxId: string, element: Element | ComponentPublicInstance | null) => {
+  const resolvedElement = element instanceof HTMLElement
+    ? element
+    : element && '$el' in element && element.$el instanceof HTMLElement
+      ? element.$el
+      : null
+
+  boxItemRefs.value[boxId] = resolvedElement
+}
+
+const getBoxItemStyle = (boxId: string) => {
+  const moveX = selectedBoxMoveX.value[boxId] || 0
+  const zIndex = elevatedBoxIds.value[boxId] ? 10 : 1
+
+  return {
+    '--move-x': `${moveX}px`,
+    '--item-z-index': `${zIndex}`,
+  }
+}
+
+const clearBoxElevationTimer = (boxId: string) => {
+  const timer = boxElevationTimers[boxId]
+  if (!timer) {
+    return
+  }
+
+  clearTimeout(timer)
+  boxElevationTimers[boxId] = null
+}
+
+const setBoxElevation = (boxId: string, isElevated: boolean) => {
+  elevatedBoxIds.value = {
+    ...elevatedBoxIds.value,
+    [boxId]: isElevated,
+  }
+}
+
+const scheduleBoxElevation = (boxId: string, isElevated: boolean, delayMs: number) => {
+  clearBoxElevationTimer(boxId)
+
+  if (delayMs <= 0) {
+    setBoxElevation(boxId, isElevated)
+    return
+  }
+
+  boxElevationTimers[boxId] = setTimeout(() => {
+    setBoxElevation(boxId, isElevated)
+    boxElevationTimers[boxId] = null
+  }, delayMs)
+}
+
+const updateSelectedBoxPosition = async () => {
+  await nextTick()
+
+  if (!selectedBoxId.value) {
+    selectedBoxMoveX.value = {}
+    return
+  }
+
+  const activeItem = boxItemRefs.value[selectedBoxId.value]
+  if (!activeItem) {
+    return
+  }
+
+  const activeScene = activeItem.querySelector<HTMLElement>('.scene')
+  const targetRect = activeScene?.getBoundingClientRect() || activeItem.getBoundingClientRect()
+  const windowCenter = window.innerWidth / 2
+  const itemCenter = targetRect.left + targetRect.width / 2
+
+  selectedBoxMoveX.value = {
+    [selectedBoxId.value]: windowCenter - itemCenter,
+  }
+}
 
 const isCardAlreadyRead = (card: CardType) => {
   const slug = card.slug || ''
@@ -286,6 +371,7 @@ const toggleBoxSelection = async (boxId: string, face: 'A' | 'B') => {
     playbackBoxId.value = boxId
     playbackBoxFace.value = face
     playbackStartSlug.value = null
+    await updateSelectedBoxPosition()
     await syncRouteWithPlayback()
     return
   }
@@ -294,12 +380,22 @@ const toggleBoxSelection = async (boxId: string, face: 'A' | 'B') => {
   selectedBoxFace.value = face
   playbackBoxId.value = null
   playbackStartSlug.value = null
+  await updateSelectedBoxPosition()
   await syncRouteWithPlayback()
 }
 
 const resetSelection = async () => {
   clearSelectionState()
+  selectedBoxMoveX.value = {}
   await syncRouteWithPlayback()
+}
+
+const onWindowResize = () => {
+  if (!selectedBoxId.value) {
+    return
+  }
+
+  void updateSelectedBoxPosition()
 }
 
 const onGlobalKeydown = (event: KeyboardEvent) => {
@@ -325,9 +421,24 @@ const renderedBoxes = computed(() => {
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
 })
 
+watch(selectedBoxId, (nextBoxId, previousBoxId) => {
+  if (previousBoxId && previousBoxId !== nextBoxId) {
+    setBoxElevation(previousBoxId, true)
+    scheduleBoxElevation(previousBoxId, false, BOX_Z_INDEX_CLOSE_DELAY_MS)
+  }
+
+  if (!nextBoxId || nextBoxId === previousBoxId) {
+    return
+  }
+
+  setBoxElevation(nextBoxId, false)
+  scheduleBoxElevation(nextBoxId, true, BOX_Z_INDEX_OPEN_DELAY_MS)
+})
+
 onMounted(async () => {
   ensureLoaded()
   window.addEventListener('keydown', onGlobalKeydown)
+  window.addEventListener('resize', onWindowResize)
   document.addEventListener('pointerdown', onGlobalPointerDown)
 
   const boxes = await boxStore.fetchBoxes()
@@ -337,6 +448,7 @@ onMounted(async () => {
 
   if (routeBoxId.value) {
     await openBoxFromRoute(routeBoxId.value)
+    await updateSelectedBoxPosition()
   }
 
   routeSyncReady.value = true
@@ -350,6 +462,7 @@ watch(routeBoxId, async (nextRouteBoxId) => {
   if (!nextRouteBoxId) {
     if (playbackBoxId.value) {
       clearSelectionState()
+      selectedBoxMoveX.value = {}
     }
     return
   }
@@ -359,11 +472,15 @@ watch(routeBoxId, async (nextRouteBoxId) => {
   }
 
   await openBoxFromRoute(nextRouteBoxId)
+  await updateSelectedBoxPosition()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
+  window.removeEventListener('resize', onWindowResize)
   document.removeEventListener('pointerdown', onGlobalPointerDown)
+
+  Object.keys(boxElevationTimers).forEach(clearBoxElevationTimer)
 })
 </script>
 
@@ -399,6 +516,7 @@ onBeforeUnmount(() => {
 }
 
 .mix-shelf {
+  position: relative;
   display: flex;
   gap: 1rem;
   min-width: 100vw;
@@ -407,6 +525,32 @@ onBeforeUnmount(() => {
   overflow-x: visible;
   align-items: center;
   justify-content: center;
+
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    background: rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 600ms ease;
+  }
+}
+
+.mix-shelf--has-active::before {
+  opacity: 1;
+}
+
+.mix-shelf__item {
+  position: relative;
+  z-index: var(--item-z-index, 1);
+  flex: 0 0 auto;
+  transition: transform 600ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.mix-shelf__item--active {
+  transform: translateX(var(--move-x));
 }
 
 .mix-page {
