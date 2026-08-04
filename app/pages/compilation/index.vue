@@ -1,9 +1,5 @@
 <template>
   <main class="mix-page" :class="{ 'mix-page--playing': isPlaybackOpen }">
-    <header v-if="playbackBox" class="mix-current-box">
-      <h1>{{ playbackBox.name }}</h1>
-    </header>
-
     <section v-if="renderedBoxes.length" ref="shelfRef" class="mix-shelf"
       :class="{ 'mix-shelf--has-active': Boolean(selectedBoxId) }">
       <div v-for="(item, index) in renderedBoxes" :key="item.id" :ref="(el) => setBoxItemRef(item.id, el)"
@@ -603,36 +599,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.mix-head {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.mix-current-box {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 5;
-
-  h1 {
-    margin: 0;
-    font-size: clamp(1rem, 2.6vw, 1.35rem);
-    letter-spacing: 0.04em;
-  }
-}
-
-.mix-head h1 {
-  margin: 0;
-  font-size: 1rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.mix-head p {
-  margin: 0;
-  color: rgba(25, 17, 10, 0.78);
-}
-
 .mix-shelf {
   position: relative;
   display: flex;
@@ -649,7 +615,7 @@ onBeforeUnmount(() => {
     position: fixed;
     inset: 0;
     z-index: 4;
-    background: rgba(0, 0, 0, 1);
+    background: #000000;
     opacity: 0;
     pointer-events: none;
     transition: opacity 600ms ease;
