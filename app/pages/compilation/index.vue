@@ -11,6 +11,18 @@
         :style="getBoxItemStyle(item.id)">
         <Box :box="item" :is-selected="selectedBoxId === item.id" :mode-rotations="rotations"
           :disableInteraction="false" @toggle-select="(face) => toggleBoxSelection(item.id, face)" :tabindex="index" />
+
+        <Transition name="mix-shelf-details">
+          <section v-if="detailsVisibleBoxId === item.id && selectedBoxQuote" class="mix-shelf__details">
+            <PlayButton class="mix-shelf__play" interactive :is-playing="isSelectedBoxPlaying"
+              :aria-label="`Lire ${item.name}`" @click.stop="openSelectedBoxPlayback" />
+
+            <blockquote class="mix-shelf__quote">
+              <p>{{ selectedBoxQuote.lines.join(' ') }}</p>
+              <footer v-if="selectedBoxQuote.author">{{ selectedBoxQuote.author }}</footer>
+            </blockquote>
+          </section>
+        </Transition>
       </div>
     </section>
 
@@ -39,6 +51,7 @@ import type { Card as CardType } from '~~/types/types'
 import type { BoxDetails } from '~~/types/types'
 import type { ComponentPublicInstance } from 'vue'
 import TarotDeck from '~/components/player/TarotDeck.vue'
+import PlayButton from '~/components/UI/PlayButton.vue'
 
 type BoxMode = 'stored' | 'selected'
 type Rotation = {
@@ -61,11 +74,14 @@ const playbackBoxFace = ref<'A' | 'B'>('A')
 const playbackStartSlug = ref<string | null>(null)
 const playbackIsPlaying = ref(false)
 const selectedBoxMoveX = ref<Record<string, number>>({})
+const detailsVisibleBoxId = ref<string | null>(null)
 const { ensureLoaded, stateBySlug } = usePersistentCardState()
 const routeSyncReady = ref(false)
 const BOX_Z_INDEX_OPEN_DELAY_MS = 100
 const BOX_Z_INDEX_CLOSE_DELAY_MS = 570
+const BOX_DETAILS_REVEAL_DELAY_MS = 1000
 const boxElevationTimers: Record<string, ReturnType<typeof setTimeout> | null> = {}
+let detailsRevealTimer: ReturnType<typeof setTimeout> | null = null
 
 const routeBoxId = computed(() => {
   const id = route.params.id
@@ -112,6 +128,39 @@ const playbackCards = computed<CardType[]>(() => {
 
 const playbackFaceColor = computed(() => {
   return playbackBox.value?.color?.[playbackBoxFace.value] || null
+})
+
+const selectedBoxQuote = computed(() => {
+  if (!selectedBoxId.value) {
+    return null
+  }
+
+  const box = boxStore.boxById[selectedBoxId.value]
+  const quoteSide = box?.quote?.[selectedBoxFace.value]
+  if (!quoteSide) {
+    return null
+  }
+
+  const lines = Object.entries(quoteSide)
+    .filter(([key, value]) => key !== 'author' && key !== 'auhor' && typeof value === 'string' && value.trim().length > 0)
+    .sort(([left], [right]) => Number(left) - Number(right))
+    .map(([, value]) => value as string)
+
+  const author = quoteSide.author || quoteSide.auhor || ''
+  if (!lines.length && !author) {
+    return null
+  }
+
+  return {
+    lines,
+    author,
+  }
+})
+
+const isSelectedBoxPlaying = computed(() => {
+  return playbackIsPlaying.value
+    && playbackBoxId.value === selectedBoxId.value
+    && playbackBoxFace.value === selectedBoxFace.value
 })
 
 const setBoxItemRef = (boxId: string, element: Element | ComponentPublicInstance | null) => {
@@ -163,6 +212,29 @@ const scheduleBoxElevation = (boxId: string, isElevated: boolean, delayMs: numbe
     setBoxElevation(boxId, isElevated)
     boxElevationTimers[boxId] = null
   }, delayMs)
+}
+
+const clearDetailsRevealTimer = () => {
+  if (!detailsRevealTimer) {
+    return
+  }
+
+  clearTimeout(detailsRevealTimer)
+  detailsRevealTimer = null
+}
+
+const scheduleDetailsReveal = (boxId: string | null) => {
+  clearDetailsRevealTimer()
+  detailsVisibleBoxId.value = null
+
+  if (!boxId) {
+    return
+  }
+
+  detailsRevealTimer = setTimeout(() => {
+    detailsVisibleBoxId.value = boxId
+    detailsRevealTimer = null
+  }, BOX_DETAILS_REVEAL_DELAY_MS)
 }
 
 const updateSelectedBoxPosition = async () => {
@@ -270,6 +342,17 @@ const queuePlaybackFromCard = async (card: CardType) => {
   }
 
   playbackStartSlug.value = slug
+}
+
+const openSelectedBoxPlayback = async () => {
+  if (!selectedBoxId.value) {
+    return
+  }
+
+  playbackBoxId.value = selectedBoxId.value
+  playbackBoxFace.value = selectedBoxFace.value
+  playbackStartSlug.value = null
+  await syncRouteWithPlayback()
 }
 
 const resolveFaceForBox = (box: BoxDetails): 'A' | 'B' => {
@@ -387,6 +470,7 @@ const toggleBoxSelection = async (boxId: string, face: 'A' | 'B') => {
 const resetSelection = async () => {
   clearSelectionState()
   selectedBoxMoveX.value = {}
+  scheduleDetailsReveal(null)
   await syncRouteWithPlayback()
 }
 
@@ -426,6 +510,8 @@ watch(selectedBoxId, (nextBoxId, previousBoxId) => {
     setBoxElevation(previousBoxId, true)
     scheduleBoxElevation(previousBoxId, false, BOX_Z_INDEX_CLOSE_DELAY_MS)
   }
+
+  scheduleDetailsReveal(nextBoxId)
 
   if (!nextBoxId || nextBoxId === previousBoxId) {
     return
@@ -480,6 +566,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onWindowResize)
   document.removeEventListener('pointerdown', onGlobalPointerDown)
 
+  clearDetailsRevealTimer()
   Object.keys(boxElevationTimers).forEach(clearBoxElevationTimer)
 })
 </script>
@@ -551,6 +638,65 @@ onBeforeUnmount(() => {
 
 .mix-shelf__item--active {
   transform: translateX(var(--move-x));
+}
+
+.mix-shelf__details {
+  position: absolute;
+  top: calc(100% + 1rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(32rem, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 0.25rem;
+  z-index: 11;
+}
+
+.mix-shelf__play {
+  cursor: pointer;
+  width: 80px;
+}
+
+.mix-shelf__quote {
+  margin: 0;
+  display: grid;
+  gap: 2rem;
+  text-align: center;
+
+  p {
+    margin: 0;
+    color: rgba(255, 248, 235, 0.92);
+    font-size: clamp(0.95rem, 1.9vw, 1.1rem);
+    line-height: 1.55;
+  }
+
+  footer {
+    margin: 0;
+    color: rgba(255, 248, 235, 0.62);
+    font-size: 0.8rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+}
+
+.mix-shelf-details-enter-active,
+.mix-shelf-details-leave-active {
+  transition:
+    opacity 260ms ease,
+    transform 360ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.mix-shelf-details-enter-from,
+.mix-shelf-details-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-12px) scale(0.98);
+}
+
+.mix-shelf-details-enter-to,
+.mix-shelf-details-leave-from {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
 }
 
 .mix-page {
