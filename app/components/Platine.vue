@@ -19,8 +19,8 @@
     </div>
     <div class="disc" ref="discRef" id="disc">
       <div class="bobine" :style="{
-        height: progressPercentage + '%',
-        width: progressPercentage + '%'
+        height: visibleProgressPercentage + '%',
+        width: visibleProgressPercentage + '%'
       }"></div>
       <button class="power-button" :class="{ isPowerActive }" @click="Power" @touchstart.passive="isPowerActive = true"
         @touchend="isPowerActive = false" @touchcancel="isPowerActive = false" :disabled="isLoadingTrack">
@@ -57,6 +57,7 @@ const isEndOfTrack = ref(false)
 const isPowerActive = ref(false)
 
 const progressPercentage = ref(0)
+const frozenProgressPercentage = ref<number | null>(null)
 const currentTurns = ref(0)
 const totalTurns = ref(0)// Refs pour les instances
 
@@ -69,8 +70,11 @@ const isMounted = ref(false)
 const isPlaying = computed(() => Math.abs(Math.round(sampler.value?.currentSpeed || 0)) !== 0)
 const isReversed = computed(() => disc.value?.isReversed || false)
 const currentSpeed = computed(() => sampler.value?.currentSpeed || 0)
+const visibleProgressPercentage = computed(() => frozenProgressPercentage.value ?? progressPercentage.value)
 const { requestWakeLock, releaseWakeLock } = useScreenWakeLock()
 const { resolveMediaUrl } = useMediaUrl()
+
+let bobineFreezeTimer: ReturnType<typeof window.setTimeout> | null = null
 
 const canAutoplayNow = async () => {
   if (!sampler.value) return false
@@ -250,6 +254,18 @@ const unload = () => {
   progressPercentage.value = 0
   currentTurns.value = 0
   totalTurns.value = 0
+}
+
+const freezeBobineFor = (durationMs: number) => {
+  if (bobineFreezeTimer) {
+    window.clearTimeout(bobineFreezeTimer)
+  }
+
+  frozenProgressPercentage.value = progressPercentage.value
+  bobineFreezeTimer = window.setTimeout(() => {
+    frozenProgressPercentage.value = null
+    bobineFreezeTimer = null
+  }, durationMs)
 }
 
 const pause = () => {
@@ -525,6 +541,9 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
   isMounted.value = false
+  if (bobineFreezeTimer) {
+    window.clearTimeout(bobineFreezeTimer)
+  }
   cleanup()
 })
 
@@ -541,6 +560,7 @@ defineExpose({
   pause,
   play,
   jumpToNearEnd,
+  freezeBobineFor,
   togglePlay,
   Reverse,
   Rewind,

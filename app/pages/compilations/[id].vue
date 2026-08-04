@@ -33,6 +33,7 @@ const playbackRef = ref<HTMLElement | null>(null)
 const tarotDeckRef = ref<InstanceType<typeof TarotDeck> | null>(null)
 const playbackBoxId = ref<string | null>(null)
 const playbackBoxFace = ref<'A' | 'B'>('A')
+const playbackRequestedStartSlug = ref<string | null>(null)
 const playbackStartSlug = ref<string | null>(null)
 const playbackIsPlaying = ref(false)
 
@@ -59,7 +60,7 @@ const playbackBoxIdWithFace = computed(() => {
 })
 
 const playbackDeckKey = computed(() => {
-  return `${playbackBoxIdWithFace.value}:${playbackStartSlug.value || 'head'}`
+  return `${playbackBoxIdWithFace.value}:${playbackRequestedStartSlug.value || 'head'}`
 })
 
 const playbackCards = computed<CardType[]>(() => {
@@ -144,6 +145,7 @@ const syncFromRoute = async () => {
 
   playbackBoxId.value = boxId
   playbackBoxFace.value = resolveRequestedFaceForBox(box, requestedFace)
+  playbackRequestedStartSlug.value = null
   playbackStartSlug.value = null
   playbackIsPlaying.value = false
 }
@@ -229,6 +231,7 @@ const queuePlaybackFromCard = async (card: CardType) => {
     return
   }
 
+  playbackRequestedStartSlug.value = slug || null
   playbackStartSlug.value = slug
 }
 
@@ -275,6 +278,7 @@ watch(routeBoxId, async () => {
   display: flex;
   overflow-x: auto;
   overflow-y: hidden;
+  gap: 10px;
 }
 
 .mix-playback__card-item {

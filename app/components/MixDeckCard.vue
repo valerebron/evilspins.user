@@ -114,6 +114,10 @@ const unload = () => {
   ready.value = false
 }
 
+const freezeBobineFor = (durationMs: number) => {
+  platineRef.value?.freezeBobineFor?.(durationMs)
+}
+
 const setVolume = (volume: number) => {
   platineRef.value?.setVolume?.(volume)
 }
@@ -147,6 +151,7 @@ defineExpose({
   resume,
   togglePlay,
   pause,
+  freezeBobineFor,
   jumpToNearEnd,
   unload,
   setVolume,

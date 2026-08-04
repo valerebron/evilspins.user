@@ -1,12 +1,12 @@
 <template>
   <main class="tarot-player" :class="{ 'tarot-player--embedded': props.embedded }">
     <section class="tarot-player__deck-stage">
-      <div class="tarot-player__deck" :class="{ 'is-active': activeDeck === 'A' }" v-show="activeDeck === 'A'">
+      <div class="tarot-player__deck" :class="{ 'is-active': activeDeck === 'A' }" :aria-hidden="activeDeck !== 'A'">
         <MixDeckCard ref="deckARef" label="A" :card="deckA.card" :active="activeDeck === 'A'"
           @play-state-changed="(isPlaying) => onDeckPlayStateChanged('A', isPlaying)" />
       </div>
 
-      <div class="tarot-player__deck" :class="{ 'is-active': activeDeck === 'B' }" v-show="activeDeck === 'B'">
+      <div class="tarot-player__deck" :class="{ 'is-active': activeDeck === 'B' }" :aria-hidden="activeDeck !== 'B'">
         <MixDeckCard ref="deckBRef" label="B" :card="deckB.card" :active="activeDeck === 'B'"
           @play-state-changed="(isPlaying) => onDeckPlayStateChanged('B', isPlaying)" />
       </div>
@@ -21,6 +21,7 @@
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
 import MixDeckCard from '~/components/MixDeckCard.vue'
+import { timeout } from '~/utils/timeout'
 
 const props = defineProps<{
   boxId: string
@@ -35,6 +36,7 @@ const emit = defineEmits<{
 
 const SWITCH_GUARD_SECONDS = 0.18
 const TRACK_CHECK_INTERVAL_MS = 80
+const DECK_CROSSFADE_MS = 1560
 
 const boxStore = useBoxStore()
 const { markCardPlayedToEnd } = usePersistentCardState()
@@ -50,6 +52,7 @@ const autoplayBlocked = ref(false)
 const isTransitioning = ref(false)
 const cards = ref<Card[]>([])
 const cursor = ref(0)
+const deckCrossfadeDuration = `${DECK_CROSSFADE_MS}ms`
 
 let monitorTimer: ReturnType<typeof window.setInterval> | null = null
 
@@ -225,13 +228,16 @@ const switchDeck = async () => {
   }
 
   // No crossfader: switch source directly once incoming deck starts.
+  activeDeck.value = toDeck
+
   const outgoingCard = fromDeck === 'A' ? deckA.card : deckB.card
   if (outgoingCard?.slug) {
     markCardPlayedToEnd(outgoingCard.slug)
   }
+  fromRef.freezeBobineFor?.(DECK_CROSSFADE_MS)
   fromRef.unload()
-  activeDeck.value = toDeck
 
+  await timeout(DECK_CROSSFADE_MS)
   await loadDeckTrack(fromDeck)
 
   isTransitioning.value = false
@@ -336,17 +342,21 @@ defineExpose({
   width: min(94svw, 94svh);
   height: min(94svw, 94svh);
   position: relative;
+  isolation: isolate;
 }
 
 .tarot-player__deck {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 260ms ease;
+  z-index: 1;
+  transition: opacity v-bind(deckCrossfadeDuration) ease;
+  will-change: opacity;
   pointer-events: none;
 
   &.is-active {
     opacity: 1;
+    z-index: 2;
     pointer-events: auto;
   }
 }
