@@ -15,7 +15,7 @@
               alt="box back cover" draggable="false" />
           </div>
           <div class="box__face box__face--right" :style="faceStyle"></div>
-          <div class="box__face box__face--left" :style="faceStyle"></div>
+          <div class="box__face box__face--left"></div>
           <div class="box__face box__face--top" :style="faceStyle">{{ box?.name }}</div>
           <div class="box__face box__face--bottom" :style="faceStyle">{{ box?.name }}</div>
 
