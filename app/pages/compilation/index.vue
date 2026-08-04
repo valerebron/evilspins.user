@@ -27,8 +27,9 @@
                   {{ line }}
                 </span>
               </p>
-              <footer class="mix-shelf__quote-author text-esyellow font-bold" v-if="selectedBoxQuote.author">{{
-                selectedBoxQuote.author }}
+              <footer class="mix-shelf__quote-author text-esyellow font-bold text-center"
+                v-if="selectedBoxQuote.author">{{
+                  selectedBoxQuote.author }}
               </footer>
             </blockquote>
           </section>
@@ -700,7 +701,8 @@ onBeforeUnmount(() => {
   margin: 0;
   display: grid;
   gap: 2rem;
-  text-align: center;
+  text-align: justify;
+  padding: 20px;
 
   p {
     margin: 0;
@@ -708,7 +710,7 @@ onBeforeUnmount(() => {
     gap: 0.25rem;
     position: relative;
     color: rgba(255, 248, 235, 0.92);
-    font-size: clamp(0.95rem, 1.9vw, 1.1rem);
+    font-size: clamp(1.1rem, 1.9vw, 1.1rem);
     line-height: 1.55;
 
     &::before,
