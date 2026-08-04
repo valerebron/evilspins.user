@@ -338,11 +338,6 @@ defineExpose({
   position: relative;
 }
 
-.tarot-player--embedded .tarot-player__deck-stage {
-  width: min(100%, 90svh);
-  height: min(100%, 90svh);
-}
-
 .tarot-player__deck {
   position: absolute;
   inset: 0;

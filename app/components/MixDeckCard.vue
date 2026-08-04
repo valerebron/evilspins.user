@@ -1,7 +1,15 @@
 <template>
-  <section class="mix-deck" :class="{ 'open': isOpen, 'show-play-button': true }">
-    <CardElement v-if="card" :key="`card-${card.slug}`" :card="card" :is-face-up="isFaceUp" :is-loading="isLoading"
-      role="img" tabindex="-1" />
+  <section class="mix-deck">
+    <article v-if="card" :key="`card-${card.slug}`" class="mix-deck__cover" role="img" tabindex="-1"
+      :aria-label="`${card.artist} - ${card.title}`">
+      <img v-if="card.url_image" :src="card.url_image" alt="card cover" class="mix-deck__cover-image"
+        draggable="false" />
+      <div v-else class="mix-deck__cover-fallback">
+        <p class="mix-deck__cover-title">{{ card.title }}</p>
+        <p class="mix-deck__cover-artist">{{ card.artist }}</p>
+      </div>
+      <div v-if="isLoading" class="mix-deck__loading" aria-hidden="true" />
+    </article>
 
     <Platine v-if="card && isPlatineMounted" :key="`platine-${card.slug}`" ref="platineRef" :card="card"
       :active="active" class="mix-deck__platine" :class="{ 'mix-deck__platine--visible': isOpen }"
@@ -10,9 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { timeout } from '~/utils/timeout'
 import type { Card } from '~~/types/types'
-import CardElement from '~/components/CardElement.vue'
 import Platine from '~/components/Platine.vue'
 
 const props = defineProps<{
@@ -29,23 +35,19 @@ const emit = defineEmits<{
 const platineRef = ref<InstanceType<typeof Platine> | null>(null)
 const { markCardFlipped, markCardPlayedToEnd } = usePersistentCardState()
 
-const isFaceUp = ref(false)
 const isOpen = ref(false)
 const isLoading = ref(true)
 const isPlatineMounted = ref(false)
 const ready = ref(false)
 
 const prepareVisualState = () => {
-  isFaceUp.value = false
   isOpen.value = false
   isLoading.value = true
   isPlatineMounted.value = !!props.card
   ready.value = false
 }
 
-const onTrackLoaded = async () => {
-  isFaceUp.value = true
-  await timeout(220)
+const onTrackLoaded = () => {
   isOpen.value = true
   isLoading.value = false
   ready.value = true
@@ -108,7 +110,6 @@ const pause = () => {
 const unload = () => {
   platineRef.value?.unload?.()
   isOpen.value = false
-  isFaceUp.value = false
   isLoading.value = true
   ready.value = false
 }
@@ -154,55 +155,83 @@ defineExpose({
 </script>
 
 <style scoped lang="scss">
-$card-transition-speed: 1.1s;
-
 .mix-deck {
   width: min(100cqw, 100cqh);
   height: min(100cqw, 100cqh);
   aspect-ratio: 1 / 1;
   position: relative;
-  transition: all $card-transition-speed cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: stretch;
   justify-content: center;
+}
 
-  :deep(.card-element),
-  :deep(.platine) {
-    width: 100%;
-    height: 100%;
-    transition: all $card-transition-speed cubic-bezier(0.4, 0, 0.2, 1);
-  }
+.mix-deck__cover,
+:deep(.platine) {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
 
-  :deep(.card-element) {
-    position: absolute;
+.mix-deck__cover {
+  border-radius: 50%;
+  overflow: hidden;
+  padding: 6%;
+  background-color: rgba(255, 255, 255, 0.5);
+  box-sizing: border-box;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
 
-    .card-body {
-      display: none;
-    }
-  }
+.mix-deck__cover-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+}
 
-  &.open {
-    :deep(.card-element) {
-      pointer-events: none;
+.mix-deck__cover-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  padding: 10%;
+  background: linear-gradient(145deg, #f6f6f6 0%, #e9e9e9 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
 
-      .face-up,
-      .face-down {
-        border-radius: 100%;
+.mix-deck__cover-title,
+.mix-deck__cover-artist {
+  margin: 0;
+  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-        .cover {
-          border-radius: 100%;
-        }
+.mix-deck__cover-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
 
-        .rank,
-        .play-button {
-          opacity: 0;
-        }
-      }
-    }
-  }
+.mix-deck__cover-artist {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.mix-deck__loading {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.38));
 }
 
 .mix-deck__platine {
+  width: 100%;
+  height: 100%;
   opacity: 0;
   pointer-events: none;
 

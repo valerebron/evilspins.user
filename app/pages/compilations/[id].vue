@@ -245,24 +245,34 @@ watch(routeBoxId, async () => {
 
 <style scoped lang="scss">
 .mix-player-page {
-  min-height: 100svh;
+  --dock-height: calc(64px + env(safe-area-inset-bottom, 0px));
+  height: calc(100svh - var(--dock-height));
   padding: 12px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .mix-playback {
   position: relative;
   display: grid;
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr) minmax(0, min(20%, 300px));
   gap: 10px;
+  overflow: hidden;
+}
+
+.mix-playback__deck-wrap {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .mix-playback__cards {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(220px, 1fr);
-  gap: 8px;
+  padding-bottom: 20px;
+  height: 100%;
+  display: flex;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -271,5 +281,9 @@ watch(routeBoxId, async () => {
   width: clamp(130px, 16vw, 210px);
   aspect-ratio: 7 / 10;
   min-height: 0;
+
+  .card {
+    width: 100%;
+  }
 }
 </style>
