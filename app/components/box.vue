@@ -6,18 +6,18 @@
       <div class="scene__canvas" @click="requestToggleSelection">
         <div ref="boxRef" class="box" :class="boxClasses" :style="boxStyle" @transitionstart="onBoxTransitionStart"
           @transitionend="onBoxTransitionEnd" @transitioncancel="onBoxTransitionEnd">
-          <div class="box__face box__face--front">
+          <div class="box__face box__face--front" :style="faceStyle">
             <img v-if="frontCoverUrl" class="box-face-cover box-face-cover--front" :src="frontCoverUrl"
               alt="box front cover" draggable="false" />
           </div>
-          <div class="box__face box__face--back">
+          <div class="box__face box__face--back" :style="faceStyle">
             <img v-if="backCoverUrl" class="box-face-cover box-face-cover--back" :src="backCoverUrl"
               alt="box back cover" draggable="false" />
           </div>
-          <div class="box__face box__face--right" :style="rightFaceStyle"></div>
-          <div class="box__face box__face--left"></div>
-          <div class="box__face box__face--top" :style="topFaceStyle">{{ box?.name }}</div>
-          <div class="box__face box__face--bottom" :style="bottomFaceStyle">{{ box?.name }}</div>
+          <div class="box__face box__face--right" :style="faceStyle"></div>
+          <div class="box__face box__face--left" :style="faceStyle"></div>
+          <div class="box__face box__face--top" :style="faceStyle">{{ box?.name }}</div>
+          <div class="box__face box__face--bottom" :style="faceStyle">{{ box?.name }}</div>
 
           <div v-if="shouldRenderCardsVolume" class="box__cards-volume"
             :class="{ 'box__cards-volume--revealed': isCardsVolumeRevealed }">
@@ -292,21 +292,8 @@ const backCoverUrl = computed(() => {
   return resolveMediaUrl(coverPath)
 })
 
-const boxSideBaseColor = computed(() => activeFaceColor.value || '#d9d2c4')
-
-const topFaceStyle = computed(() => ({
-  backgroundColor: boxSideBaseColor.value,
-  boxShadow: 'inset 0 0 0 999px rgba(255, 255, 255, 0.18)',
-}))
-
-const bottomFaceStyle = computed(() => ({
-  backgroundColor: boxSideBaseColor.value,
-  boxShadow: 'inset 0 0 0 999px rgba(0, 0, 0, 0.08)',
-}))
-
-const rightFaceStyle = computed(() => ({
-  backgroundColor: boxSideBaseColor.value,
-  boxShadow: 'inset 0 0 0 999px rgba(0, 0, 0, 0.16)',
+const faceStyle = computed(() => ({
+  backgroundColor: activeFaceColor.value || '#d9d2c4',
 }))
 
 const stopSpinInertia = () => {
