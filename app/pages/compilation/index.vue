@@ -737,7 +737,6 @@ onBeforeUnmount(() => {
 
   footer {
     margin: 0;
-    // color: rgba(255, 248, 235, 0.62);
     font-size: 0.8rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
