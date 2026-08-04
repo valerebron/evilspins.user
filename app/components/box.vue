@@ -62,6 +62,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (event: 'toggle-select', face: CompilationSide): void
+  (event: 'face-changed', face: CompilationSide): void
 }>()
 
 const { resolveMediaUrl } = useMediaUrl()
@@ -231,6 +232,7 @@ const switchCompilationSideFromGesture = (dragDeltaX: number) => {
   if (dragDeltaX > 0) {
     if (requestedCompilationSide.value !== 'B' && availableCompilationSides.value.has('B')) {
       requestedCompilationSide.value = 'B'
+      emit('face-changed', requestedCompilationSide.value)
       switched = true
     }
     return switched
@@ -240,6 +242,7 @@ const switchCompilationSideFromGesture = (dragDeltaX: number) => {
   if (dragDeltaX < 0) {
     if (requestedCompilationSide.value === 'B' && availableCompilationSides.value.has('A')) {
       requestedCompilationSide.value = 'A'
+      emit('face-changed', requestedCompilationSide.value)
       switched = true
     }
   }

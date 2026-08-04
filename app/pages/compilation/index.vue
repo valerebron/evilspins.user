@@ -10,7 +10,8 @@
         class="mix-shelf__item" :class="{ 'mix-shelf__item--active': selectedBoxId === item.id }"
         :style="getBoxItemStyle(item.id)">
         <Box :box="item" :is-selected="selectedBoxId === item.id" :mode-rotations="rotations"
-          :disableInteraction="false" @toggle-select="(face) => toggleBoxSelection(item.id, face)" :tabindex="index" />
+          :disableInteraction="false" @toggle-select="(face) => toggleBoxSelection(item.id, face)"
+          @face-changed="(face) => syncSelectedFace(item.id, face)" :tabindex="index" />
 
         <Transition name="mix-shelf-details">
           <section v-if="detailsVisibleBoxId === item.id && selectedBoxQuote" class="mix-shelf__details">
@@ -18,7 +19,12 @@
               :aria-label="`Lire ${item.name}`" @click.stop="openSelectedBoxPlayback" />
 
             <blockquote class="mix-shelf__quote">
-              <p>{{ selectedBoxQuote.lines.join(' ') }}</p>
+              <p>
+                <span v-for="(line, lineIndex) in selectedBoxQuote.lines" :key="`${item.id}:${lineIndex}`"
+                  class="mix-shelf__quote-line">
+                  {{ line }}
+                </span>
+              </p>
               <footer v-if="selectedBoxQuote.author">{{ selectedBoxQuote.author }}</footer>
             </blockquote>
           </section>
@@ -451,6 +457,7 @@ const openBoxFromRoute = async (rawRouteId: string) => {
 
 const toggleBoxSelection = async (boxId: string, face: 'A' | 'B') => {
   if (selectedBoxId.value === boxId) {
+    selectedBoxFace.value = face
     playbackBoxId.value = boxId
     playbackBoxFace.value = face
     playbackStartSlug.value = null
@@ -465,6 +472,19 @@ const toggleBoxSelection = async (boxId: string, face: 'A' | 'B') => {
   playbackStartSlug.value = null
   await updateSelectedBoxPosition()
   await syncRouteWithPlayback()
+}
+
+const syncSelectedFace = (boxId: string, face: 'A' | 'B') => {
+  if (selectedBoxId.value !== boxId) {
+    return
+  }
+
+  selectedBoxFace.value = face
+
+  if (playbackBoxId.value === boxId) {
+    playbackBoxFace.value = face
+    void syncRouteWithPlayback()
+  }
 }
 
 const resetSelection = async () => {
@@ -647,6 +667,7 @@ onBeforeUnmount(() => {
   transform: translateX(-50%);
   width: min(32rem, calc(100vw - 2rem));
   display: flex;
+  gap: 2rem;
   flex-direction: column;
   align-items: center;
   padding-top: 0.25rem;
@@ -666,6 +687,8 @@ onBeforeUnmount(() => {
 
   p {
     margin: 0;
+    display: grid;
+    gap: 0.25rem;
     color: rgba(255, 248, 235, 0.92);
     font-size: clamp(0.95rem, 1.9vw, 1.1rem);
     line-height: 1.55;
@@ -678,6 +701,10 @@ onBeforeUnmount(() => {
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
+}
+
+.mix-shelf__quote-line {
+  display: block;
 }
 
 .mix-shelf-details-enter-active,

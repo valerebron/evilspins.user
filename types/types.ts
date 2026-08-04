@@ -24,6 +24,18 @@ export interface BoxFaceColorMap {
   [side: string]: string | undefined
 }
 
+export interface BoxQuoteSide {
+  author?: string
+  auhor?: string
+  [line: string]: string | undefined
+}
+
+export interface BoxQuoteMap {
+  A?: BoxQuoteSide
+  B?: BoxQuoteSide
+  [side: string]: BoxQuoteSide | undefined
+}
+
 export interface BoxSummary {
   id: string
   name: string
@@ -39,6 +51,7 @@ export interface BoxDetails {
   name: string
   artists: Record<string, unknown>
   color?: BoxFaceColorMap
+  quote?: BoxQuoteMap
   cover_front?: string | null
   cover_back?: string | null
   cards: Card[]
