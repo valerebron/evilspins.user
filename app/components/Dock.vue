@@ -4,7 +4,7 @@
       <DiceSVG />
     </NuxtLink>
 
-    <NuxtLink to="/compilation" class="tooltip" :class="{ 'active': activeDock === '/compilation' }"
+    <NuxtLink to="/compilations" class="tooltip" :class="{ 'active': activeDock === '/compilations' }"
       data-tip="Compilations">
       <CassetteSVG />
     </NuxtLink>

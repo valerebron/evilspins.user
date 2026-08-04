@@ -87,7 +87,7 @@ const props = withDefaults(defineProps<{
 import { getYearColor } from '~/utils/colors'
 
 const cardColor = computed(() => props.backColor || getYearColor(props.card.year || 0))
-const isBoxRoute = computed(() => route.path.startsWith('/compilation'))
+const isBoxRoute = computed(() => route.path.startsWith('/compilations'))
 const faceDownImageSrc = computed(() => isBoxRoute.value ? '/face-down-tarot.svg' : '/face-down.svg')
 const visibleButtons = computed(() => props.buttons?.length ? props.buttons : ['play'])
 const usePlayButton = computed(() => visibleButtons.value.length === 1 && visibleButtons.value[0] === 'play')

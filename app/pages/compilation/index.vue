@@ -284,7 +284,7 @@ const updateSelectedBoxPosition = async () => {
 }
 
 const buildCompilationPath = (boxId: string, face: 'A' | 'B') => {
-  return `/compilation/${boxId}${face === 'B' ? 'B' : ''}`
+  return `/compilations/${boxId}${face === 'B' ? 'B' : ''}`
 }
 
 const finalizePlaybackOpening = async (boxId: string, face: 'A' | 'B') => {
@@ -306,7 +306,7 @@ const openSelectedBoxPlayback = () => {
   const targetFace = selectedBoxFace.value
 
   openingPlaybackBoxId.value = targetBoxId
-  scheduleDetailsReveal(null)
+  // scheduleDetailsReveal(null)
   clearPlaybackOpenTimer()
 
   playbackOpenTimer = setTimeout(() => {
@@ -603,7 +603,7 @@ onBeforeUnmount(() => {
 
 .mix-shelf-details-enter-from {
   opacity: 0;
-  // transform: translateX(-50%) translateY(-12px) scale(0.98);
+  transform: translateX(-50%) translateY(-12px) scale(0.98);
 }
 
 .mix-shelf-details-leave-to {

@@ -132,13 +132,13 @@ const syncFromRoute = async () => {
   const { boxId, requestedFace } = parseRouteBoxTarget(routeBoxId.value)
 
   if (!boxId) {
-    await navigateTo('/compilation', { replace: true })
+    await navigateTo('/compilations', { replace: true })
     return
   }
 
   const box = await boxStore.fetchBoxById(boxId)
   if (!box) {
-    await navigateTo('/compilation', { replace: true })
+    await navigateTo('/compilations', { replace: true })
     return
   }
 
