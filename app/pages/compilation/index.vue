@@ -638,7 +638,7 @@ onBeforeUnmount(() => {
     position: fixed;
     inset: 0;
     z-index: 4;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.8);
     opacity: 0;
     pointer-events: none;
     transition: opacity 600ms ease;
