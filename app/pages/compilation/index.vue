@@ -7,7 +7,8 @@
     <section v-if="renderedBoxes.length" ref="shelfRef" class="mix-shelf"
       :class="{ 'mix-shelf--has-active': Boolean(selectedBoxId) }">
       <div v-for="(item, index) in renderedBoxes" :key="item.id" :ref="(el) => setBoxItemRef(item.id, el)"
-        class="mix-shelf__item" :class="{ 'mix-shelf__item--active': selectedBoxId === item.id }"
+        class="mix-shelf__item"
+        :class="{ 'mix-shelf__item--active': selectedBoxId === item.id, 'mix-shelf__item--details-visible': detailsVisibleBoxId === item.id }"
         :style="getBoxItemStyle(item.id)">
         <Box :box="item" :is-selected="selectedBoxId === item.id" :mode-rotations="rotations"
           :disableInteraction="false" @toggle-select="(face) => toggleBoxSelection(item.id, face)"
@@ -657,7 +658,11 @@ onBeforeUnmount(() => {
 }
 
 .mix-shelf__item--active {
-  transform: translateX(var(--move-x));
+  transform: translateX(var(--move-x)) translateY(0);
+}
+
+.mix-shelf__item--active.mix-shelf__item--details-visible {
+  transform: translateX(var(--move-x)) translateY(-150px);
 }
 
 .mix-shelf__details {
