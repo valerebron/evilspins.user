@@ -9,10 +9,16 @@
     </p>
   </section>
 
+  <div v-if="nfcStatus" class="toast toast-top toast-center collection-toast">
+    <div role="alert" class="alert" :class="nfcStatusTone === 'error' ? 'alert-error' : 'alert-success'">
+      <span>{{ nfcStatus }}</span>
+    </div>
+  </div>
+
   <article v-for="card in displayedCards" :key="card.slug || card.esid" class="collection-card">
     <Card :card="card" :is-face-up="true" :show-play-button="false" click-behavior="self-play" />
   </article>
-  <CollectionActions class="fixed bottom-20" />
+  <CollectionActions class="fixed bottom-20" :show-nfc="hasCurrentlyPlayingCard" @nfc="writeCurrentTrackToNfc" />
 </template>
 
 <script setup lang="ts">
@@ -26,6 +32,7 @@ type CardListResponse = {
 }
 
 const ALL_CARDS_PAGE_SIZE = 1000
+const NFC_TOAST_DURATION_MS = 3600
 
 const { data, pending, error } = await useFetch<{
   data: CardType[]
@@ -38,10 +45,18 @@ const { data, pending, error } = await useFetch<{
 
 const cards = computed<CardType[]>(() => data.value?.data || [])
 const { ensureLoaded, flippedSlugs } = usePersistentCardState()
+const { openCardId } = useCardOpenState()
 const showAllCards = ref(false)
 const isLoadingAllCards = ref(false)
 const allCardsError = ref('')
 const allCards = ref<CardType[]>([])
+const nfcStatus = ref('')
+const nfcStatusTone = ref<'success' | 'error' | ''>('')
+let nfcToastTimer: ReturnType<typeof setTimeout> | null = null
+
+type WebNfcWriter = {
+  write: (message: unknown) => Promise<void>
+}
 
 const collectedCards = computed<CardType[]>(() => {
   if (flippedSlugs.value.size === 0) {
@@ -61,6 +76,17 @@ const displayedCards = computed<CardType[]>(() => {
 
   return collectedCards.value
 })
+
+const currentlyPlayingCard = computed<CardType | null>(() => {
+  const slug = openCardId.value
+  if (!slug) {
+    return null
+  }
+
+  return displayedCards.value.find(card => card.slug === slug) || null
+})
+
+const hasCurrentlyPlayingCard = computed(() => Boolean(currentlyPlayingCard.value))
 
 const allCardsButtonLabel = computed(() => {
   if (isLoadingAllCards.value) {
@@ -117,6 +143,96 @@ const toggleAllCards = async () => {
   }
 }
 
+const canWriteNfc = () => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.isSecureContext && 'NDEFReader' in window
+}
+
+const getCardUrl = (card: CardType) => {
+  const relative = card.slug ? `/card/${card.slug}` : card.url_audio || '/'
+  if (typeof window === 'undefined') {
+    return relative
+  }
+
+  return new URL(relative, window.location.origin).toString()
+}
+
+const getNfcErrorMessage = (error: unknown) => {
+  if (error instanceof DOMException) {
+    if (error.name === 'NotAllowedError') {
+      return 'Permission NFC refusee. Autorise le NFC et reessaie.'
+    }
+    if (error.name === 'NotSupportedError') {
+      return 'NFC non supporte sur cet appareil.'
+    }
+    if (error.name === 'NetworkError') {
+      return 'Aucun tag NFC detecte. Approche un tag puis reessaie.'
+    }
+
+    return `Erreur NFC: ${error.message}`
+  }
+
+  return 'Ecriture NFC impossible.'
+}
+
+const showNfcToast = (tone: 'success' | 'error', message: string) => {
+  nfcStatusTone.value = tone
+  nfcStatus.value = message
+
+  if (nfcToastTimer) {
+    clearTimeout(nfcToastTimer)
+  }
+
+  nfcToastTimer = setTimeout(() => {
+    nfcStatus.value = ''
+    nfcStatusTone.value = ''
+    nfcToastTimer = null
+  }, NFC_TOAST_DURATION_MS)
+}
+
+const writeCurrentTrackToNfc = async () => {
+  nfcStatus.value = ''
+  nfcStatusTone.value = ''
+
+  const card = currentlyPlayingCard.value
+  if (!card) {
+    showNfcToast('error', 'Aucun morceau en cours de lecture.')
+    return
+  }
+
+  if (!canWriteNfc() || typeof window === 'undefined') {
+    showNfcToast('error', 'NDEFReader indisponible dans ce navigateur.')
+    return
+  }
+
+  const NdefReader = (window as Window & {
+    NDEFReader?: new () => WebNfcWriter
+  }).NDEFReader
+
+  if (!NdefReader) {
+    showNfcToast('error', 'NDEFReader indisponible dans ce navigateur.')
+    return
+  }
+
+  try {
+    const writer = new NdefReader()
+    await writer.write({
+      records: [{
+        recordType: 'url',
+        data: getCardUrl(card),
+      }],
+    })
+
+    showNfcToast('success', `Tag NFC ecrit: ${card.title}`)
+  } catch (writeError) {
+    showNfcToast('error', getNfcErrorMessage(writeError))
+    console.error('Collection NFC error', writeError)
+  }
+}
+
 const cardAction = (payload: { button: string; card: CardType }) => {
   console.log(payload)
 }
@@ -124,9 +240,20 @@ const cardAction = (payload: { button: string; card: CardType }) => {
 onMounted(() => {
   ensureLoaded()
 })
+
+onBeforeUnmount(() => {
+  if (nfcToastTimer) {
+    clearTimeout(nfcToastTimer)
+    nfcToastTimer = null
+  }
+})
 </script>
 
 <style scoped lang="scss">
+.collection-toast {
+  z-index: 60;
+}
+
 .collection-toolbar {
   position: sticky;
   top: 0;

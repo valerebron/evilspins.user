@@ -1,27 +1,40 @@
 <template>
   <div class="collection-actions">
-    <button class="btn border-black">
+    <button type="button" class="btn ">
       <CreateCardSVG />
       Create card
     </button>
 
-    <button class="btn border-black">
+    <button type="button" class="btn ">
       <printSVG />
       Print
     </button>
 
     <!-- Google -->
-    <button class="btn border-black">
+    <button type="button" class="btn ">
       <MixSVG />
       Mix
     </button>
 
-    <button class="btn border-black">
+    <button v-if="props.showNfc" type="button" class="btn " @click="emit('nfc')">
       <NfcSVG />
       NFC
     </button>
   </div>
 </template>
+
+<script setup lang="ts">
+const props = withDefaults(defineProps<{
+  showNfc?: boolean
+}>(), {
+  showNfc: true,
+})
+
+const emit = defineEmits<{
+  nfc: []
+}>()
+</script>
+
 <style scoped>
 .collection-actions {
   width: 100%;
