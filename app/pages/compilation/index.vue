@@ -513,13 +513,19 @@ const onGlobalKeydown = (event: KeyboardEvent) => {
 }
 
 const onGlobalPointerDown = (event: PointerEvent) => {
-  const shelf = shelfRef.value
-  const playback = playbackRef.value
-  if (!shelf && !playback) return
+  if (!selectedBoxId.value) {
+    return
+  }
+
+  const activeItem = boxItemRefs.value[selectedBoxId.value]
+  if (!activeItem) {
+    return
+  }
 
   const target = event.target as Node | null
-  if (target && shelf?.contains(target)) return
-  if (target && playback?.contains(target)) return
+  if (target && activeItem.contains(target)) {
+    return
+  }
 
   void resetSelection()
 }

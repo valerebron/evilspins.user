@@ -84,7 +84,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: #fff;
 }
 
 .splash-logo {
