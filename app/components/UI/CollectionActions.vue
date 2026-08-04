@@ -16,9 +16,9 @@
       Mix
     </button>
 
-    <button type="button" class="btn" @click="emit('nfc')">
+    <button v-if="props.showNfc" type="button" class="btn" :disabled="props.isWritingNfc" @click="emit('nfc')">
       <NfcSVG />
-      NFC
+      {{ props.isWritingNfc ? 'ecritures ...' : 'NFC' }}
     </button>
   </div>
 </template>
@@ -26,8 +26,10 @@
 <script setup lang="ts">
 const props = withDefaults(defineProps<{
   showNfc?: boolean
+  isWritingNfc?: boolean
 }>(), {
   showNfc: true,
+  isWritingNfc: false,
 })
 
 const emit = defineEmits<{

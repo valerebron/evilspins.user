@@ -18,7 +18,8 @@
   <article v-for="card in displayedCards" :key="card.slug || card.esid" class="collection-card">
     <Card :card="card" :is-face-up="true" :show-play-button="false" click-behavior="self-play" />
   </article>
-  <CollectionActions class="fixed bottom-20" :show-nfc="hasCurrentlyPlayingCard" @nfc="writeCurrentTrackToNfc" />
+  <CollectionActions class="fixed bottom-20" :show-nfc="hasCurrentlyPlayingCard" :is-writing-nfc="isWritingNfc"
+    @nfc="writeCurrentTrackToNfc" />
 </template>
 
 <script setup lang="ts">
@@ -52,6 +53,7 @@ const allCardsError = ref('')
 const allCards = ref<CardType[]>([])
 const nfcStatus = ref('')
 const nfcStatusTone = ref<'success' | 'error' | ''>('')
+const isWritingNfc = ref(false)
 let nfcToastTimer: ReturnType<typeof setTimeout> | null = null
 
 type WebNfcWriter = {
@@ -218,6 +220,7 @@ const writeCurrentTrackToNfc = async () => {
   }
 
   try {
+    isWritingNfc.value = true
     const writer = new NdefReader()
     await writer.write({
       records: [{
@@ -230,6 +233,8 @@ const writeCurrentTrackToNfc = async () => {
   } catch (writeError) {
     showNfcToast('error', getNfcErrorMessage(writeError))
     console.error('Collection NFC error', writeError)
+  } finally {
+    isWritingNfc.value = false
   }
 }
 
