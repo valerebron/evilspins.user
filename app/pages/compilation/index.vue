@@ -11,7 +11,8 @@
         :class="{ 'mix-shelf__item--active': selectedBoxId === item.id, 'mix-shelf__item--details-visible': detailsVisibleBoxId === item.id }"
         :style="getBoxItemStyle(item.id)">
         <Box :box="item" :is-selected="selectedBoxId === item.id" :mode-rotations="rotations"
-          :disableInteraction="false" :enter-index="index" @toggle-select="(face) => toggleBoxSelection(item.id, face)"
+          :enter-delay-ms="index * 90" :disableInteraction="false"
+          @toggle-select="(face) => toggleBoxSelection(item.id, face)"
           @face-changed="(face) => syncSelectedFace(item.id, face)" :tabindex="index" />
 
         <Transition name="mix-shelf-details">

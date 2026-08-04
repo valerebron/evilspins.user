@@ -58,7 +58,7 @@ const props = defineProps<{
   forcedMode?: BoxMode
   modeRotations?: BoxRotationMap
   disableInteraction?: boolean
-  enterIndex?: number
+  enterDelayMs?: number
 }>()
 
 const emit = defineEmits<{
@@ -70,8 +70,6 @@ const { resolveMediaUrl } = useMediaUrl()
 
 const isAnimating = ref(false)
 const isMounted = ref(false)
-const BOX_ENTER_DURATION_MS = 1000
-const BOX_ENTER_STAGGER_MS = 90
 const BASE_ORIENTATION = 270
 const DEFAULT_SELECTED_SPIN_ANGLE = -35
 const FULL_TURN_DEGREES = 360
@@ -162,6 +160,9 @@ const sceneClasses = computed(() => ({
   'scene--selected': selectedMode.value === 'selected',
   'scene--spin-enabled': isSpinInteractionEnabled.value,
 }))
+const boxStageStyle = computed(() => ({
+  '--box-enter-delay': `${Math.max(props.enterDelayMs ?? 0, 0)}ms`,
+}))
 const boxClasses = computed(() => [
   showClass.value,
   {
@@ -181,17 +182,6 @@ const sceneHeightFactor = computed(() => {
   return isQuarterTurn ? dimensions.widthFactor : dimensions.heightFactor
 })
 const sceneCropFactor = computed(() => (1.5 - sceneHeightFactor.value) / 2)
-const boxEnterDelayMs = computed(() => {
-  const index = Number(props.enterIndex ?? 0)
-  if (!Number.isFinite(index) || index <= 0) {
-    return 0
-  }
-
-  return index * BOX_ENTER_STAGGER_MS
-})
-const boxStageStyle = computed(() => ({
-  '--box-enter-delay': `${boxEnterDelayMs.value}ms`,
-}))
 const sceneStyle = computed(() => ({
   '--scene-crop-factor': `${sceneCropFactor.value}`,
   '--scene-height-factor': `${sceneHeightFactor.value}`,
@@ -619,10 +609,13 @@ const startMountAnimation = () => {
 
   isMounted.value = true
 
+  const enterDelay = Math.max(props.enterDelayMs ?? 0, 0)
+  const totalDurationMs = enterDelay + 1000 + 80
+
   mountAnimationTimeout = setTimeout(() => {
     isMounted.value = false
     mountAnimationTimeout = null
-  }, boxEnterDelayMs.value + BOX_ENTER_DURATION_MS + 120)
+  }, totalDurationMs)
 }
 
 onMounted(() => {
@@ -640,9 +633,8 @@ onMounted(() => {
   justify-self: center;
 
   &.box-enter {
-    animation: box-scale-in 1s cubic-bezier(0, 0, 0.34, 1) forwards;
+    animation: box-scale-in 1s cubic-bezier(0, 0, 0.34, 1) both;
     animation-delay: var(--box-enter-delay, 0ms);
-    animation-fill-mode: both;
   }
 }
 
