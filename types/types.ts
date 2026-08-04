@@ -25,9 +25,9 @@ export interface BoxFaceColorMap {
 }
 
 export interface BoxQuoteSide {
-  author?: string
-  auhor?: string
-  [line: string]: string | undefined
+  author?: string | number | { name: string; url?: string }
+  auhor?: string | number | { name: string; url?: string }
+  [line: string]: string | number | { name: string; url?: string } | undefined
 }
 
 export interface BoxQuoteMap {

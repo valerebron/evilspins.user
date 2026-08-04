@@ -26,8 +26,12 @@
                 </span>
               </p>
               <footer class="mix-shelf__quote-author text-esyellow font-bold text-center"
-                v-if="selectedBoxQuote.author">{{
-                  selectedBoxQuote.author }}
+                v-if="selectedBoxQuote.authorName">
+                <a v-if="selectedBoxQuote.authorUrl" class="mix-shelf__quote-author-link"
+                  :href="selectedBoxQuote.authorUrl" target="_blank" rel="noreferrer noopener">
+                  {{ selectedBoxQuote.authorName }}
+                </a>
+                <span v-else>{{ selectedBoxQuote.authorName }}</span>
               </footer>
             </blockquote>
           </section>
@@ -48,6 +52,11 @@ type Rotation = {
   x: number
   y: number
   z: number
+}
+
+type QuoteAuthorDetails = {
+  name: string
+  url: string | null
 }
 
 const boxStore = useBoxStore()
@@ -73,6 +82,73 @@ const rotations = ref<Record<BoxMode, Rotation>>({
   selected: { x: 29, y: 18, z: 88 },
 })
 
+const resolveArtistMetadata = (value: unknown): QuoteAuthorDetails | null => {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const name = typeof record.name === 'string' ? record.name.trim() : ''
+  const url = typeof record.url === 'string' && record.url.trim().length > 0
+    ? record.url.trim()
+    : null
+
+  if (!name) {
+    return null
+  }
+
+  return { name, url }
+}
+
+const resolveQuoteAuthor = (box: BoxDetails, face: 'A' | 'B', rawAuthor: unknown): QuoteAuthorDetails | null => {
+  if (rawAuthor === undefined || rawAuthor === null) {
+    return null
+  }
+
+  const resolvedAuthorObject = resolveArtistMetadata(rawAuthor)
+  if (resolvedAuthorObject) {
+    return resolvedAuthorObject
+  }
+
+  const normalizedAuthor = String(rawAuthor).trim()
+  if (!normalizedAuthor) {
+    return null
+  }
+
+  const authorPosition = Number.parseInt(normalizedAuthor, 10)
+  if (Number.isFinite(authorPosition)) {
+    const matchingCard = box.cards.find((card) => {
+      const cardSide = (card.box_side || '').toUpperCase()
+      const isSameSide = !cardSide || cardSide === face
+      return isSameSide && card.box_position === authorPosition
+    })
+
+    if (matchingCard) {
+      const artistMetadata = resolveArtistMetadata(box.artists[matchingCard.esid])
+      if (artistMetadata) {
+        return artistMetadata
+      }
+
+      if (matchingCard.artist?.trim()) {
+        return {
+          name: matchingCard.artist.trim(),
+          url: null,
+        }
+      }
+    }
+  }
+
+  const artistByTrackId = resolveArtistMetadata(box.artists[normalizedAuthor])
+  if (artistByTrackId) {
+    return artistByTrackId
+  }
+
+  return {
+    name: normalizedAuthor,
+    url: null,
+  }
+}
+
 const selectedBoxQuote = computed(() => {
   if (!selectedBoxId.value) {
     return null
@@ -89,14 +165,15 @@ const selectedBoxQuote = computed(() => {
     .sort(([left], [right]) => Number(left) - Number(right))
     .map(([, value]) => value as string)
 
-  const author = quoteSide.author || quoteSide.auhor || ''
+  const author = resolveQuoteAuthor(box, selectedBoxFace.value, quoteSide.author ?? quoteSide.auhor)
   if (!lines.length && !author) {
     return null
   }
 
   return {
     lines,
-    author,
+    authorName: author?.name || '',
+    authorUrl: author?.url || null,
   }
 })
 
@@ -408,7 +485,6 @@ onBeforeUnmount(() => {
 }
 
 .mix-shelf__item--active.mix-shelf__item--opening {
-  // transform: translateX(calc(var(--move-x) + 220px)) translateY(42px);
   opacity: 0;
   pointer-events: none;
 }
@@ -509,27 +585,34 @@ onBeforeUnmount(() => {
   }
 }
 
+.mix-shelf__quote-author-link {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+}
+
 .mix-shelf-details-enter-active,
 .mix-shelf-details-leave-active {
   transition:
-    opacity 260ms ease,
-    transform 360ms cubic-bezier(.22, 1, .36, 1);
+    opacity 260ms ease;
 }
 
 .mix-shelf-details-enter-from {
   opacity: 0;
-  transform: translateX(-50%) translateY(-12px) scale(0.98);
+  // transform: translateX(-50%) translateY(-12px) scale(0.98);
 }
 
 .mix-shelf-details-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(16px) scale(0.98);
 }
 
 .mix-shelf-details-enter-to,
 .mix-shelf-details-leave-from {
   opacity: 1;
-  transform: translateX(-50%) translateY(0) scale(1);
 }
 
 .mix-page {
