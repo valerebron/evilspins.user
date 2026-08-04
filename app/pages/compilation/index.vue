@@ -11,7 +11,7 @@
         :class="{ 'mix-shelf__item--active': selectedBoxId === item.id, 'mix-shelf__item--details-visible': detailsVisibleBoxId === item.id }"
         :style="getBoxItemStyle(item.id)">
         <Box :box="item" :is-selected="selectedBoxId === item.id" :mode-rotations="rotations"
-          :disableInteraction="false" @toggle-select="(face) => toggleBoxSelection(item.id, face)"
+          :disableInteraction="false" :enter-index="index" @toggle-select="(face) => toggleBoxSelection(item.id, face)"
           @face-changed="(face) => syncSelectedFace(item.id, face)" :tabindex="index" />
 
         <Transition name="mix-shelf-details">
@@ -26,7 +26,9 @@
                   {{ line }}
                 </span>
               </p>
-              <footer v-if="selectedBoxQuote.author">{{ selectedBoxQuote.author }}</footer>
+              <footer class="mix-shelf__quote-author text-esyellow font-bold" v-if="selectedBoxQuote.author">{{
+                selectedBoxQuote.author }}
+              </footer>
             </blockquote>
           </section>
         </Transition>
@@ -639,7 +641,7 @@ onBeforeUnmount(() => {
     position: fixed;
     inset: 0;
     z-index: 4;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 1);
     opacity: 0;
     pointer-events: none;
     transition: opacity 600ms ease;
@@ -676,12 +678,21 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   padding-top: 0.25rem;
-  z-index: 11;
+  margin-top: -55px;
+  z-index: 20;
 }
 
 .mix-shelf__play {
   cursor: pointer;
   width: 80px;
+
+  &:hover {
+    transform: scale(1.4);
+  }
+
+  &:active {
+    transform: scale(1);
+  }
 }
 
 .mix-shelf__quote {
@@ -694,14 +705,38 @@ onBeforeUnmount(() => {
     margin: 0;
     display: grid;
     gap: 0.25rem;
+    position: relative;
     color: rgba(255, 248, 235, 0.92);
     font-size: clamp(0.95rem, 1.9vw, 1.1rem);
     line-height: 1.55;
+
+    &::before,
+    &::after {
+      display: block;
+      font-size: 1.5em;
+      line-height: 1;
+      color: rgba(255, 248, 235, 0.75);
+      font-family: serif;
+      font-size: 80px;
+      position: absolute;
+    }
+
+    &::before {
+      content: '“';
+      top: -50px;
+      left: 0;
+    }
+
+    &::after {
+      content: '”';
+      bottom: -70px;
+      right: 0;
+    }
   }
 
   footer {
     margin: 0;
-    color: rgba(255, 248, 235, 0.62);
+    // color: rgba(255, 248, 235, 0.62);
     font-size: 0.8rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -710,6 +745,10 @@ onBeforeUnmount(() => {
 
 .mix-shelf__quote-line {
   display: block;
+
+  &:first-child::first-letter {
+    text-transform: uppercase;
+  }
 }
 
 .mix-shelf-details-enter-active,

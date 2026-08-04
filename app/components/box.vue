@@ -1,5 +1,5 @@
 <template>
-  <section class="box-stage">
+  <section class="box-stage" :class="{ 'box-enter': isMounted }" :style="boxStageStyle">
     <div ref="sceneRef" class="scene" :class="sceneClasses" :style="sceneStyle" @pointerdown="onSpinPointerDown"
       @pointermove="onSpinPointerMove" @pointerup="onSpinPointerUp" @pointercancel="onSpinPointerUp"
       @lostpointercapture="onSpinPointerUp">
@@ -58,6 +58,7 @@ const props = defineProps<{
   forcedMode?: BoxMode
   modeRotations?: BoxRotationMap
   disableInteraction?: boolean
+  enterIndex?: number
 }>()
 
 const emit = defineEmits<{
@@ -68,6 +69,9 @@ const emit = defineEmits<{
 const { resolveMediaUrl } = useMediaUrl()
 
 const isAnimating = ref(false)
+const isMounted = ref(false)
+const BOX_ENTER_DURATION_MS = 1000
+const BOX_ENTER_STAGGER_MS = 90
 const BASE_ORIENTATION = 270
 const DEFAULT_SELECTED_SPIN_ANGLE = -35
 const FULL_TURN_DEGREES = 360
@@ -151,6 +155,7 @@ let cardsUnmountTimer: ReturnType<typeof setTimeout> | null = null
 let cardsRevealFrameA = 0
 let cardsRevealFrameB = 0
 let inertiaFrame = 0
+let mountAnimationTimeout: ReturnType<typeof setTimeout> | null = null
 const sceneClasses = computed(() => ({
   'scene--animating': isAnimating.value || isSpinInertiaActive.value,
   'scene--selected-priority': elevateSelectedZIndex.value,
@@ -176,6 +181,17 @@ const sceneHeightFactor = computed(() => {
   return isQuarterTurn ? dimensions.widthFactor : dimensions.heightFactor
 })
 const sceneCropFactor = computed(() => (1.5 - sceneHeightFactor.value) / 2)
+const boxEnterDelayMs = computed(() => {
+  const index = Number(props.enterIndex ?? 0)
+  if (!Number.isFinite(index) || index <= 0) {
+    return 0
+  }
+
+  return index * BOX_ENTER_STAGGER_MS
+})
+const boxStageStyle = computed(() => ({
+  '--box-enter-delay': `${boxEnterDelayMs.value}ms`,
+}))
 const sceneStyle = computed(() => ({
   '--scene-crop-factor': `${sceneCropFactor.value}`,
   '--scene-height-factor': `${sceneHeightFactor.value}`,
@@ -446,6 +462,11 @@ watch(hasRotationOverrides, (enabled) => {
 onBeforeUnmount(() => {
   stopSpinInertia()
 
+  if (mountAnimationTimeout) {
+    clearTimeout(mountAnimationTimeout)
+    mountAnimationTimeout = null
+  }
+
   if (selectedZIndexTimer) {
     clearTimeout(selectedZIndexTimer)
     selectedZIndexTimer = null
@@ -591,6 +612,23 @@ const getCardStyle = (index: number) => {
   }
 }
 
+const startMountAnimation = () => {
+  if (mountAnimationTimeout) {
+    clearTimeout(mountAnimationTimeout)
+  }
+
+  isMounted.value = true
+
+  mountAnimationTimeout = setTimeout(() => {
+    isMounted.value = false
+    mountAnimationTimeout = null
+  }, boxEnterDelayMs.value + BOX_ENTER_DURATION_MS + 120)
+}
+
+onMounted(() => {
+  startMountAnimation()
+})
+
 </script>
 
 <style scoped lang="scss">
@@ -600,6 +638,24 @@ const getCardStyle = (index: number) => {
   position: relative;
   width: 70px;
   justify-self: center;
+
+  &.box-enter {
+    animation: box-scale-in 1s cubic-bezier(0, 0, 0.34, 1) forwards;
+    animation-delay: var(--box-enter-delay, 0ms);
+    animation-fill-mode: both;
+  }
+}
+
+@keyframes box-scale-in {
+  from {
+    transform: translateX(50px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0px);
+    opacity: 1;
+  }
 }
 
 .scene {
