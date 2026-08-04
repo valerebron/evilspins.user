@@ -1,22 +1,22 @@
 <template>
   <div class="collection-actions">
-    <button type="button" class="btn ">
+    <button type="button" class="btn" v-if="false">
       <CreateCardSVG />
       Create card
     </button>
 
-    <button type="button" class="btn ">
+    <button type="button" class="btn" v-if="false">
       <printSVG />
       Print
     </button>
 
     <!-- Google -->
-    <button type="button" class="btn ">
+    <button type="button" class="btn" v-if="false">
       <MixSVG />
       Mix
     </button>
 
-    <button v-if="props.showNfc" type="button" class="btn " @click="emit('nfc')">
+    <button type="button" class="btn" @click="emit('nfc')">
       <NfcSVG />
       NFC
     </button>
