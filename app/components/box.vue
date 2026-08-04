@@ -24,10 +24,12 @@
             <div v-for="(item, index) in stackedCards" :key="item.esid || `${item.slug}-${index}`" class="stacked-card"
               :style="getCardStyle(index)">
               <div class="stacked-card-face stacked-card-face--front">
-                <BoxBlurhashCard :blurhash="item.blurhash" :card-year="item.year" :is-face-up="true" />
+                <BoxBlurhashCard :blurhash="item.blurhash" :card-year="item.year" :is-face-up="true"
+                  :show-rank-badge="index === 0" :card-rank="item.rank || null" :card-suit="item.suit || null" />
               </div>
               <div class="stacked-card-face stacked-card-face--back">
-                <card :card="item" :back-color="activeFaceColor" :is-face-up="false" :show-play-button="false" />
+                <BoxBlurhashCard :card-year="item.year" :back-color="activeFaceColor" :is-face-up="false"
+                  :use-tarot-back="index === stackedCards.length - 1" />
               </div>
             </div>
           </div>
