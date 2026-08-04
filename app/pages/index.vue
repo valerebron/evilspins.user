@@ -59,7 +59,7 @@ onUnmounted(() => {
 }
 
 .card-reveal.is-visible {
-  opacity: 1;
+  // opacity: 1;
   animation: card-slide-up 650ms cubic-bezier(0.18, 0.8, 0.22, 1) forwards;
   animation-delay: var(--card-delay, 0ms);
 }
@@ -72,10 +72,12 @@ onUnmounted(() => {
 @keyframes card-slide-up {
   from {
     transform: translateY(24vh) scale(0.96);
+    opacity: 0;
   }
 
   to {
     transform: translateY(0) scale(1);
+    opacity: 1;
   }
 }
 
