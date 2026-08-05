@@ -96,7 +96,7 @@
         </button>
         <button type="button" class="btn" :disabled="selectedCount === 0 || isGeneratingPdf" @click="generatePdf">
           {{ isGeneratingPdf ? 'Generation...' : `Generer le PDF (${selectedCount} carte${selectedCount > 1 ? 's' :
-          ''})` }}
+            ''})` }}
         </button>
       </div>
     </div>
@@ -111,9 +111,9 @@
   </article>
   <CollectionActions class="fixed bottom-20" :selected-count="selectedCount" :show-nfc="selectedCount > 0"
     :is-writing-nfc="isWritingNfc" :is-nfc-disabled="!isNfcAvailable" :nfc-title="nfcButtonTitle"
-    :is-loading-all-cards="isLoadingAllCards"
-    :all-cards-button-label="allCardsButtonLabel" @nfc="writeCurrentTrackToNfc" @print="printSelectedCards"
-    @clear-selection="clearSelectedCards" @toggle-all-cards="toggleAllCards" />
+    :is-loading-all-cards="isLoadingAllCards" :all-cards-button-label="allCardsButtonLabel"
+    @nfc="writeCurrentTrackToNfc" @print="printSelectedCards" @clear-selection="clearSelectedCards"
+    @toggle-all-cards="toggleAllCards" />
 </template>
 
 <script setup lang="ts">
