@@ -164,7 +164,7 @@
         edit
       </button>
       <button type="button" class="btn btn-xs btn-error" @click="removeLocalCard(card)">
-        supprimer
+        x
       </button>
     </div>
   </article>
@@ -793,21 +793,21 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
 
   .card {
     width: 160px;
     margin: 10px;
-
-    &.open {
-      transform: scale(1.5);
-      z-index: 10;
-    }
   }
 }
 
 .collection-card__local-actions {
-  display: flex;
+  display: inline-flex;
   gap: 0.5rem;
-  margin-top: -2px;
+  position: absolute;
+  right: 10px;
+  bottom: 30px;
+  transform: translateX(calc(-100% - 0.4rem));
+  z-index: 30;
 }
 </style>
