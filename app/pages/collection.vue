@@ -112,7 +112,7 @@
   <CollectionActions class="fixed bottom-20" :selected-count="selectedCount" :show-nfc="selectedCount > 0"
     :is-writing-nfc="isWritingNfc" :is-nfc-disabled="!isNfcAvailable" :nfc-title="nfcButtonTitle"
     :is-loading-all-cards="isLoadingAllCards" :all-cards-button-label="allCardsButtonLabel"
-    @nfc="writeCurrentTrackToNfc" @print="printSelectedCards" @clear-selection="clearSelectedCards"
+    @nfc="writeCurrentTrackToNfc" @print="printSelectedCards" @mix="goToMix" @clear-selection="clearSelectedCards"
     @toggle-all-cards="toggleAllCards" />
 </template>
 
@@ -161,6 +161,7 @@ const isPrintModalOpen = ref(false)
 const printModalRef = ref<HTMLDialogElement | null>(null)
 const selectedCardSlugs = ref<Set<string>>(new Set())
 const selectedCardsBySlug = ref<Record<string, CardType>>({})
+const mixCardsStore = useMixCardsStore()
 let nfcToastTimer: ReturnType<typeof setTimeout> | null = null
 const exportMode = ref<PrintExportMode>('duplex')
 const backAlignment = ref<BackAlignmentMode>('mirror')
@@ -204,6 +205,11 @@ const currentlyPlayingCard = computed<CardType | null>(() => {
 const selectedCount = computed(() => selectedCardSlugs.value.size)
 const selectedCardsForPrint = computed<PrintCardItem[]>(() => {
   return Object.values(selectedCardsBySlug.value) as PrintCardItem[]
+})
+const selectedCardsForMix = computed<CardType[]>(() => {
+  return Array.from(selectedCardSlugs.value)
+    .map((slug) => selectedCardsBySlug.value[slug])
+    .filter((card): card is CardType => Boolean(card))
 })
 const selectedCardForNfc = computed<CardType | null>(() => {
   const currentCard = currentlyPlayingCard.value
@@ -411,6 +417,15 @@ const printSelectedCards = async () => {
   }
 
   isPrintModalOpen.value = true
+}
+
+const goToMix = async () => {
+  if (selectedCardsForMix.value.length === 0) {
+    return
+  }
+
+  mixCardsStore.setCards(selectedCardsForMix.value)
+  await navigateTo('/mix')
 }
 
 const writeCurrentTrackToNfc = async () => {

@@ -168,8 +168,6 @@ defineExpose({
 
 <style scoped lang="scss">
 .mix-deck {
-  width: min(100cqw, 100cqh);
-  height: min(100cqw, 100cqh);
   aspect-ratio: 1 / 1;
   position: relative;
   display: flex;

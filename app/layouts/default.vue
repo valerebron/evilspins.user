@@ -10,7 +10,7 @@ const { openCardId } = useCardOpenState()
 const route = useRoute()
 
 const isFullscreenPage = computed(() => {
-  return route.path === '/' || route.path === ('/compilations')
+  return route.path === '/' || route.path === ('/compilations') || route.path === ('/mix')
 })
 
 useGlobalCardShortcuts()
