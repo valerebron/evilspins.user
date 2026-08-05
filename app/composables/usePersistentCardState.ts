@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 type CardState = {
 	flipped: boolean
 	playedToEnd: boolean
+	discoveredAt?: number
 }
 
 const STORAGE_KEY = 'evilspins:card-state:v1'
@@ -14,6 +15,7 @@ const loaded = ref(false)
 const createDefaultState = (): CardState => ({
 	flipped: false,
 	playedToEnd: false,
+	discoveredAt: undefined,
 })
 
 const normalizeStateMap = (input: unknown): Record<string, CardState> => {
@@ -25,6 +27,7 @@ const normalizeStateMap = (input: unknown): Record<string, CardState> => {
 				normalized[value] = {
 					flipped: true,
 					playedToEnd: false,
+					discoveredAt: undefined,
 				}
 			}
 		}
@@ -43,6 +46,7 @@ const normalizeStateMap = (input: unknown): Record<string, CardState> => {
 			normalized[slug] = {
 				flipped: true,
 				playedToEnd: false,
+				discoveredAt: undefined,
 			}
 			continue
 		}
@@ -55,6 +59,9 @@ const normalizeStateMap = (input: unknown): Record<string, CardState> => {
 		normalized[slug] = {
 			flipped: Boolean(state.flipped),
 			playedToEnd: Boolean(state.playedToEnd),
+			discoveredAt: typeof state.discoveredAt === 'number' && Number.isFinite(state.discoveredAt)
+				? state.discoveredAt
+				: undefined,
 		}
 	}
 
@@ -110,6 +117,7 @@ const upsertState = (slug: string, patch: Partial<CardState>) => {
 	const nextState: CardState = {
 		flipped: patch.flipped ?? current.flipped,
 		playedToEnd: patch.playedToEnd ?? current.playedToEnd,
+		discoveredAt: patch.discoveredAt ?? current.discoveredAt,
 	}
 
 	stateBySlug.value = {
@@ -121,7 +129,12 @@ const upsertState = (slug: string, patch: Partial<CardState>) => {
 }
 
 const markCardFlipped = (slug: string) => {
-	upsertState(slug, { flipped: true })
+	ensureLoaded()
+	const currentState = stateBySlug.value[slug]
+	upsertState(slug, {
+		flipped: true,
+		discoveredAt: currentState?.discoveredAt ?? Date.now(),
+	})
 }
 
 const markCardPlayedToEnd = (slug: string) => {

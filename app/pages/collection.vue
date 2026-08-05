@@ -105,19 +105,78 @@
     </form>
   </dialog>
 
+  <dialog ref="editLocalCardModalRef" class="modal modal-middle" @close="isEditLocalCardModalOpen = false">
+    <div class="modal-box max-w-lg">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold">Edit local card</h2>
+          <p class="mt-1 text-sm text-base-content/70">Modifie les infos de la carte locale.</p>
+        </div>
+        <form method="dialog">
+          <button class="btn btn-sm">Fermer</button>
+        </form>
+      </div>
+
+      <form class="mt-5 grid gap-4" @submit.prevent="saveLocalCardEdition">
+        <label class="grid gap-2 text-sm font-medium text-base-content">
+          <span>Artiste</span>
+          <input v-model="editLocalCardArtist" type="text" class="input w-full" placeholder="Nom de l'artiste" />
+        </label>
+
+        <label class="grid gap-2 text-sm font-medium text-base-content">
+          <span>Titre</span>
+          <input v-model="editLocalCardTitle" type="text" class="input w-full" placeholder="Titre" />
+        </label>
+
+        <label class="grid gap-2 text-sm font-medium text-base-content">
+          <span>Suit</span>
+          <select v-model="editLocalCardSuit" class="select w-full">
+            <option v-for="suit in CARD_SUITS" :key="suit" :value="suit">{{ suit }}</option>
+          </select>
+        </label>
+
+        <label class="grid gap-2 text-sm font-medium text-base-content">
+          <span>Rank</span>
+          <select v-model="editLocalCardRank" class="select w-full">
+            <option v-for="rank in CARD_RANKS" :key="rank" :value="rank">{{ rank }}</option>
+          </select>
+        </label>
+
+        <p v-if="editLocalCardError" class="text-sm text-error">{{ editLocalCardError }}</p>
+
+        <div class="modal-action">
+          <button type="button" class="btn btn-soft" @click="closeLocalCardEdition">Annuler</button>
+          <button type="submit" class="btn">Sauvegarder</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
   <article v-for="card in displayedCards" :key="card.slug || card.esid" class="collection-card">
     <Card :card="card" :is-face-up="true" :show-play-button="false" :selectable="true" :selected="isCardSelected(card)"
       click-behavior="self-play" @update:selected="updateCardSelection(card, $event)" />
+
+    <div v-if="isLocalCard(card)" class="collection-card__local-actions">
+      <button type="button" class="btn btn-xs" @click="openLocalCardEdition(card)">
+        edit
+      </button>
+      <button type="button" class="btn btn-xs btn-error" @click="removeLocalCard(card)">
+        supprimer
+      </button>
+    </div>
   </article>
   <CollectionActions class="fixed bottom-20" :selected-count="selectedCount" :show-nfc="selectedCount > 0"
     :is-writing-nfc="isWritingNfc" :is-nfc-disabled="!isNfcAvailable" :nfc-title="nfcButtonTitle"
     :is-loading-all-cards="isLoadingAllCards" :all-cards-button-label="allCardsButtonLabel"
-    @nfc="writeCurrentTrackToNfc" @print="printSelectedCards" @mix="goToMix" @clear-selection="clearSelectedCards"
-    @toggle-all-cards="toggleAllCards" />
+    @nfc="writeCurrentTrackToNfc" @print="printSelectedCards" @mix="goToMix" @create-card="goToCreateCard"
+    @clear-selection="clearSelectedCards" @toggle-all-cards="toggleAllCards" />
 </template>
 
 <script setup lang="ts">
-import type { Card as CardType } from '~~/types/types'
+import type { Card as CardType, Rank, Suit } from '~~/types/types'
 import { usePrintPdf } from '~/composables/usePrintPdf'
 import {
   PAPER_FORMATS,
@@ -137,6 +196,8 @@ type CardListResponse = {
 
 const ALL_CARDS_PAGE_SIZE = 1000
 const NFC_TOAST_DURATION_MS = 3600
+const CARD_SUITS: Suit[] = ['♠', '♥', '♦', '♣']
+const CARD_RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R']
 
 const { data, pending, error } = await useFetch<{
   data: CardType[]
@@ -148,7 +209,13 @@ const { data, pending, error } = await useFetch<{
 })
 
 const cards = computed<CardType[]>(() => data.value?.data || [])
-const { ensureLoaded, flippedSlugs } = usePersistentCardState()
+const { ensureLoaded, flippedSlugs, stateBySlug } = usePersistentCardState()
+const {
+  localCards,
+  ensureLoaded: ensureLocalCardsLoaded,
+  updateLocalCard,
+  deleteLocalCard,
+} = useLocalCards()
 const { openCardId } = useCardOpenState()
 const showAllCards = ref(false)
 const isLoadingAllCards = ref(false)
@@ -159,6 +226,14 @@ const nfcStatusTone = ref<'success' | 'error' | ''>('')
 const isWritingNfc = ref(false)
 const isPrintModalOpen = ref(false)
 const printModalRef = ref<HTMLDialogElement | null>(null)
+const isEditLocalCardModalOpen = ref(false)
+const editLocalCardModalRef = ref<HTMLDialogElement | null>(null)
+const editingLocalCardSlug = ref('')
+const editLocalCardArtist = ref('')
+const editLocalCardTitle = ref('')
+const editLocalCardSuit = ref<Suit>('♠')
+const editLocalCardRank = ref<Rank>('A')
+const editLocalCardError = ref('')
 const selectedCardSlugs = ref<Set<string>>(new Set())
 const selectedCardsBySlug = ref<Record<string, CardType>>({})
 const mixCardsStore = useMixCardsStore()
@@ -175,23 +250,87 @@ type WebNfcWriter = {
 }
 
 const collectedCards = computed<CardType[]>(() => {
+  const mergedCards = mergeCards(cards.value, localCards.value)
+
   if (flippedSlugs.value.size === 0) {
     return []
   }
 
-  return cards.value.filter(card => {
+  return mergedCards.filter(card => {
     const slug = card.slug || ''
     return slug.length > 0 && flippedSlugs.value.has(slug)
   })
 })
 
-const displayedCards = computed<CardType[]>(() => {
-  if (showAllCards.value) {
-    return allCards.value
+const getCardTimestamp = (card: CardType) => {
+  const slug = card.slug || ''
+  if (slug) {
+    const discoveredAt = stateBySlug.value[slug]?.discoveredAt
+    if (typeof discoveredAt === 'number' && Number.isFinite(discoveredAt)) {
+      return discoveredAt
+    }
   }
 
-  return collectedCards.value
+  const createdAtValue = card.createdAt
+  if (createdAtValue) {
+    const createdAtTimestamp = new Date(createdAtValue).getTime()
+    if (Number.isFinite(createdAtTimestamp)) {
+      return createdAtTimestamp
+    }
+  }
+
+  const year = Number(card.year || 0)
+  const month = Number(card.month || 1)
+  const day = Number(card.day || 1)
+  const hour = Number(card.hour || 0)
+  const fallbackTimestamp = new Date(year, Math.max(month - 1, 0), day || 1, hour || 0).getTime()
+
+  return Number.isFinite(fallbackTimestamp) ? fallbackTimestamp : 0
+}
+
+const sortCardsByMostRecent = (cardsToSort: CardType[]) => {
+  return [...cardsToSort].sort((a, b) => {
+    return getCardTimestamp(b) - getCardTimestamp(a)
+  })
+}
+
+const displayedCards = computed<CardType[]>(() => {
+  if (showAllCards.value) {
+    return sortCardsByMostRecent(mergeCards(allCards.value, localCards.value))
+  }
+
+  return sortCardsByMostRecent(collectedCards.value)
 })
+
+const localCardSlugSet = computed(() => {
+  const slugs = new Set<string>()
+
+  for (const card of localCards.value) {
+    const slug = card.slug || ''
+    if (slug) {
+      slugs.add(slug)
+    }
+  }
+
+  return slugs
+})
+
+const mergeCards = (primary: CardType[], secondary: CardType[]) => {
+  const mergedBySlug = new Map<string, CardType>()
+
+  for (const card of [...secondary, ...primary]) {
+    const slug = card.slug || ''
+    if (!slug) {
+      continue
+    }
+
+    if (!mergedBySlug.has(slug)) {
+      mergedBySlug.set(slug, card)
+    }
+  }
+
+  return Array.from(mergedBySlug.values())
+}
 
 const currentlyPlayingCard = computed<CardType | null>(() => {
   const slug = openCardId.value
@@ -251,6 +390,11 @@ const {
 const isCardSelected = (card: CardType) => {
   const slug = card.slug || ''
   return slug.length > 0 && selectedCardSlugs.value.has(slug)
+}
+
+const isLocalCard = (card: CardType) => {
+  const slug = card.slug || ''
+  return slug.length > 0 && localCardSlugSet.value.has(slug)
 }
 
 const allCardsButtonLabel = computed(() => {
@@ -388,6 +532,25 @@ const clearSelectedCards = () => {
   isPrintModalOpen.value = false
 }
 
+const removeCardFromSelection = (slug: string) => {
+  if (!slug) {
+    return
+  }
+
+  if (!selectedCardSlugs.value.has(slug)) {
+    return
+  }
+
+  const nextSelectedSlugs = new Set(selectedCardSlugs.value)
+  nextSelectedSlugs.delete(slug)
+
+  const nextSelectedCards = { ...selectedCardsBySlug.value }
+  delete nextSelectedCards[slug]
+
+  selectedCardSlugs.value = nextSelectedSlugs
+  selectedCardsBySlug.value = nextSelectedCards
+}
+
 const syncPrintModal = async (open: boolean) => {
   if (import.meta.server) {
     return
@@ -395,6 +558,29 @@ const syncPrintModal = async (open: boolean) => {
 
   await nextTick()
   const modal = printModalRef.value
+  if (!modal) {
+    return
+  }
+
+  if (open) {
+    if (!modal.open) {
+      modal.showModal()
+    }
+    return
+  }
+
+  if (modal.open) {
+    modal.close()
+  }
+}
+
+const syncEditLocalCardModal = async (open: boolean) => {
+  if (import.meta.server) {
+    return
+  }
+
+  await nextTick()
+  const modal = editLocalCardModalRef.value
   if (!modal) {
     return
   }
@@ -426,6 +612,86 @@ const goToMix = async () => {
 
   mixCardsStore.setCards(selectedCardsForMix.value)
   await navigateTo('/mix')
+}
+
+const goToCreateCard = async () => {
+  await navigateTo('/create-card')
+}
+
+const openLocalCardEdition = (card: CardType) => {
+  if (!isLocalCard(card)) {
+    return
+  }
+
+  editingLocalCardSlug.value = card.slug || ''
+  editLocalCardArtist.value = card.artist || ''
+  editLocalCardTitle.value = card.title || ''
+  editLocalCardSuit.value = (card.suit as Suit) || '♠'
+  editLocalCardRank.value = (card.rank as Rank) || 'A'
+  editLocalCardError.value = ''
+  isEditLocalCardModalOpen.value = true
+}
+
+const closeLocalCardEdition = () => {
+  isEditLocalCardModalOpen.value = false
+  editLocalCardError.value = ''
+}
+
+const saveLocalCardEdition = () => {
+  const slug = editingLocalCardSlug.value
+  if (!slug) {
+    editLocalCardError.value = 'Carte locale introuvable.'
+    return
+  }
+
+  const title = editLocalCardTitle.value.trim()
+  const artist = editLocalCardArtist.value.trim()
+  if (!title || !artist) {
+    editLocalCardError.value = 'Titre et artiste sont requis.'
+    return
+  }
+
+  updateLocalCard(slug, {
+    title,
+    artist,
+    suit: editLocalCardSuit.value,
+    rank: editLocalCardRank.value,
+  })
+
+  const selectedCard = selectedCardsBySlug.value[slug]
+  if (selectedCard) {
+    selectedCardsBySlug.value = {
+      ...selectedCardsBySlug.value,
+      [slug]: {
+        ...selectedCard,
+        title,
+        artist,
+        suit: editLocalCardSuit.value,
+        rank: editLocalCardRank.value,
+      },
+    }
+  }
+
+  closeLocalCardEdition()
+}
+
+const removeLocalCard = (card: CardType) => {
+  const slug = card.slug || ''
+  if (!slug || !isLocalCard(card)) {
+    return
+  }
+
+  const confirmed = import.meta.client ? window.confirm(`Supprimer ${card.title} ?`) : false
+  if (!confirmed) {
+    return
+  }
+
+  deleteLocalCard(slug)
+  removeCardFromSelection(slug)
+
+  if (editingLocalCardSlug.value === slug) {
+    closeLocalCardEdition()
+  }
 }
 
 const writeCurrentTrackToNfc = async () => {
@@ -472,10 +738,6 @@ const writeCurrentTrackToNfc = async () => {
   }
 }
 
-const cardAction = (payload: { button: string; card: CardType }) => {
-  console.log(payload)
-}
-
 watch(selectedCount, (count) => {
   if (count < 1) {
     isPrintModalOpen.value = false
@@ -486,9 +748,15 @@ watch(isPrintModalOpen, (open) => {
   void syncPrintModal(open)
 })
 
+watch(isEditLocalCardModalOpen, (open) => {
+  void syncEditLocalCardModal(open)
+})
+
 onMounted(() => {
   ensureLoaded()
+  ensureLocalCardsLoaded()
   void syncPrintModal(isPrintModalOpen.value)
+  void syncEditLocalCardModal(isEditLocalCardModalOpen.value)
 })
 
 onBeforeUnmount(() => {
@@ -522,6 +790,9 @@ onBeforeUnmount(() => {
 
 .collection-card {
   padding: 0 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 
   .card {
     width: 160px;
@@ -532,5 +803,11 @@ onBeforeUnmount(() => {
       z-index: 10;
     }
   }
+}
+
+.collection-card__local-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: -2px;
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <div class="collection-actions">
-    <button v-if="!hasSelection" type="button" class="btn">
+    <button v-if="!hasSelection" type="button" class="btn" @click="emit('create-card')">
       <CreateCardSVG />
       Create card
     </button>
@@ -61,6 +61,7 @@ const props = withDefaults(defineProps<{
 const hasSelection = computed(() => props.selectedCount > 0)
 
 const emit = defineEmits<{
+  'create-card': []
   nfc: []
   print: []
   mix: []

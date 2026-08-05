@@ -27,7 +27,7 @@
               </button>
             </template>
           </div>
-          <img v-if="props.card.url_image?.startsWith('blob:')" :src="props.card.url_image" alt="card cover"
+          <img v-if="isInlineImageUrl" :src="props.card.url_image" alt="card cover"
             class="cover-image relative z-0 w-full h-full object-cover object-center" draggable="false" />
           <UnLazyImage v-else :src="props.card.url_image" alt="card cover" loading="lazy"
             :blurhash="props.card.blurhash" class="cover-image relative z-0 w-full h-full object-cover object-center"
@@ -89,6 +89,10 @@ import { getYearColor } from '~/utils/colors'
 const cardColor = computed(() => props.backColor || getYearColor(props.card.year || 0))
 const isBoxRoute = computed(() => route.path.startsWith('/compilations'))
 const faceDownImageSrc = computed(() => isBoxRoute.value ? '/face-down-tarot.svg' : '/face-down.svg')
+const isInlineImageUrl = computed(() => {
+  const image = props.card.url_image || ''
+  return image.startsWith('blob:') || image.startsWith('data:')
+})
 const visibleButtons = computed(() => props.buttons?.length ? props.buttons : ['play'])
 const usePlayButton = computed(() => visibleButtons.value.length === 1 && visibleButtons.value[0] === 'play')
 
