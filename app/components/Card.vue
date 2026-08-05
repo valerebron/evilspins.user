@@ -1,6 +1,10 @@
 <template>
-  <section class="card text-center"
-    :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted, 'show-play-button': showPlayButton, 'is-disabled': isDisabled }">
+  <section class="card group text-center"
+    :class="{ 'open': isOpen, 'close': shouldClose, 'card-enter': isMounted, 'show-play-button': showPlayButton, 'is-disabled': isDisabled, 'is-selected': isSelected }">
+    <label v-if="props.selectable" class="card-selection" @click.stop>
+      <input :checked="isSelected" type="checkbox" class="checkbox checkbox-primary"
+        :aria-label="`Selectionner ${props.card.title}`" @change="onSelectionChange" />
+    </label>
     <CardElement :card="props.card!" :buttons="props.buttons" :is-face-up="isFaceUp" :role="isOpen ? 'img' : 'button'"
       :is-loading="isLoading" :back-color="props.backColor" :is-disabled="isDisabled" :is-playing="props.isPlaying"
       :class="{ 'current-card': props.isCurrent }" @click="clickOnCard" @button-click="onButtonClick" />
@@ -19,6 +23,8 @@ import CardElement from './CardElement.vue'
 const props = withDefaults(defineProps<{
   card: Card,
   backColor?: string | null,
+  selectable?: boolean,
+  selected?: boolean,
   isFaceUp?: boolean,
   isCurrent?: boolean,
   isPlaying?: boolean,
@@ -30,10 +36,18 @@ const props = withDefaults(defineProps<{
   showPlayButton?: boolean,
   disabled?: boolean,
 }>(), {
-  buttons: () => ['play']
+  buttons: () => ['play'],
+  selectable: false,
 })
 
-const emit = defineEmits(['open', 'close', 'play-request', 'flip', 'button-click'])
+const emit = defineEmits<{
+  open: []
+  close: []
+  'play-request': [card: Card]
+  flip: [card: Card]
+  'button-click': [payload: { button: string; card: Card }]
+  'update:selected': [selected: boolean]
+}>()
 const { isSplashDone, waitForSplashDone } = useSplashScreen()
 const { markCardFlipped, markCardPlayedToEnd } = usePersistentCardState()
 
@@ -70,6 +84,7 @@ onMounted(async () => {
 })
 
 const localIsFaceUp = ref(props.isFaceUp ?? false)
+const localSelected = ref(props.selected ?? false)
 
 watch(
   () => props.isFaceUp,
@@ -81,12 +96,22 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () => props.selected,
+  (value) => {
+    localSelected.value = value ?? false
+  },
+  { immediate: true }
+)
+
 const isFaceUp = computed({
   get: () => localIsFaceUp.value,
   set: (value) => {
     localIsFaceUp.value = value
   }
 })
+
+const isSelected = computed(() => localSelected.value)
 
 const isLoading = ref(false)
 const isTouch = useIsTouchInterface()
@@ -133,6 +158,12 @@ const onButtonClick = (payload: { button: string; card: Card }) => {
   }
 
   emit('button-click', payload)
+}
+
+const onSelectionChange = (event: Event) => {
+  const nextSelected = (event.target as HTMLInputElement).checked
+  localSelected.value = nextSelected
+  emit('update:selected', nextSelected)
 }
 
 const shouldClose = computed(() => {
@@ -456,6 +487,29 @@ $card-mount-speed: 0.2s;
   max-height: 100vmin;
   max-width: 100vmin;
   transition: all $card-transition-speed cubic-bezier(0.4, 0, 0.2, 1);
+
+  .card-selection {
+    position: absolute;
+    cursor: pointer;
+    z-index: 20;
+    bottom: 0px;
+    right: 0px;
+    padding: 20px;
+    width: 100%;
+    filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.35));
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  &.is-selected {
+    :deep(.card-element) {
+
+      .face-up,
+      .face-down {
+        box-shadow: 0 0 0 3px rgb(255 255 255 / 0.85);
+      }
+    }
+  }
 
   &.open {
     aspect-ratio: 10/10;

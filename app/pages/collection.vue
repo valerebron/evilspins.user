@@ -1,10 +1,6 @@
 <template>
-  <section class="collection-toolbar">
-    <button class="btn btn-sm" type="button" :disabled="isLoadingAllCards" @click="toggleAllCards">
-      {{ allCardsButtonLabel }}
-    </button>
-
-    <p v-if="allCardsError" class="collection-toolbar__error">
+  <section v-if="allCardsError" class="collection-toolbar">
+    <p class="collection-toolbar__error">
       {{ allCardsError }}
     </p>
   </section>
@@ -16,10 +12,13 @@
   </div>
 
   <article v-for="card in displayedCards" :key="card.slug || card.esid" class="collection-card">
-    <Card :card="card" :is-face-up="true" :show-play-button="false" click-behavior="self-play" />
+    <Card :card="card" :is-face-up="true" :show-play-button="false" :selectable="true" :selected="isCardSelected(card)"
+      click-behavior="self-play" @update:selected="updateCardSelection(card, $event)" />
   </article>
-  <CollectionActions class="fixed bottom-20" :show-nfc="hasCurrentlyPlayingCard" :is-writing-nfc="isWritingNfc"
-    @nfc="writeCurrentTrackToNfc" />
+  <CollectionActions class="fixed bottom-20" :selected-count="selectedCount" :show-nfc="hasCurrentlyPlayingCard"
+    :is-writing-nfc="isWritingNfc" :is-loading-all-cards="isLoadingAllCards"
+    :all-cards-button-label="allCardsButtonLabel" @nfc="writeCurrentTrackToNfc" @clear-selection="clearSelectedCards"
+    @toggle-all-cards="toggleAllCards" />
 </template>
 
 <script setup lang="ts">
@@ -54,6 +53,7 @@ const allCards = ref<CardType[]>([])
 const nfcStatus = ref('')
 const nfcStatusTone = ref<'success' | 'error' | ''>('')
 const isWritingNfc = ref(false)
+const selectedCardSlugs = ref<Set<string>>(new Set())
 let nfcToastTimer: ReturnType<typeof setTimeout> | null = null
 
 type WebNfcWriter = {
@@ -89,6 +89,12 @@ const currentlyPlayingCard = computed<CardType | null>(() => {
 })
 
 const hasCurrentlyPlayingCard = computed(() => Boolean(currentlyPlayingCard.value))
+const selectedCount = computed(() => selectedCardSlugs.value.size)
+
+const isCardSelected = (card: CardType) => {
+  const slug = card.slug || ''
+  return slug.length > 0 && selectedCardSlugs.value.has(slug)
+}
 
 const allCardsButtonLabel = computed(() => {
   if (isLoadingAllCards.value) {
@@ -195,15 +201,32 @@ const showNfcToast = (tone: 'success' | 'error', message: string) => {
   }, NFC_TOAST_DURATION_MS)
 }
 
+const updateCardSelection = (card: CardType, selected: boolean) => {
+  const slug = card.slug || ''
+  if (!slug) {
+    return
+  }
+
+  const nextSelection = new Set(selectedCardSlugs.value)
+
+  if (selected) {
+    nextSelection.add(slug)
+  } else {
+    nextSelection.delete(slug)
+  }
+
+  selectedCardSlugs.value = nextSelection
+}
+
+const clearSelectedCards = () => {
+  selectedCardSlugs.value = new Set()
+}
+
 const writeCurrentTrackToNfc = async () => {
   nfcStatus.value = ''
   nfcStatusTone.value = ''
 
   const card = currentlyPlayingCard.value
-  if (!card) {
-    showNfcToast('error', 'Aucun morceau en cours de lecture.')
-    return
-  }
 
   if (!canWriteNfc() || typeof window === 'undefined') {
     showNfcToast('error', 'NDEFReader indisponible dans ce navigateur.')

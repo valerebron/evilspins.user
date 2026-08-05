@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const daisyThemes = require('daisyui/src/theming/themes')
+
 module.exports = {
   content: [
     './app/**/*.{vue,js,ts}',
@@ -6,12 +8,17 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        primary: {
+          DEFAULT: '#fdec50ff',
+          light: '#fdec50ff',
+          dark: '#fdec50ff',
+        },
+        esyellow: '#fdec50ff'
+      },
       boxShadow: {
         '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
         '2xl-custom': '0 0 60px 50px rgba(0, 0, 0, 0.25)'
-      },
-      colors: {
-        esyellow: '#fdec50ff'
       },
       fontSize: {
         xxs: '0.625rem' // 10px par exemple
@@ -58,5 +65,15 @@ module.exports = {
         }
       })
     }
-  ]
+  ],
+  daisyui: {
+    themes: [
+      {
+        light: {
+          ...daisyThemes.light,
+          primary: '#fdec50ff',
+        },
+      },
+    ],
+  },
 }
