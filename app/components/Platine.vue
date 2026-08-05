@@ -25,7 +25,7 @@
       <button class="power-button" :class="{ isPowerActive }" @click="Power" @touchstart.passive="isPowerActive = true"
         @touchend="isPowerActive = false" @touchcancel="isPowerActive = false" :disabled="isLoadingTrack">
         <img class="macaron" src="/favicon.svg" v-if="!isEndOfTrack">
-        <img class="macaron" @click.stop="Rewind" src="/rewind.svg" v-if="isEndOfTrack" />
+        <img class="macaron" src="/rewind.svg" v-if="isEndOfTrack" />
       </button>
       <div class="turn-point" v-if="!isLoadingTrack">
       </div>
@@ -43,12 +43,14 @@ const props = withDefaults(defineProps<{
   card?: Card;
   /** Indique si cette platine est la carte actuellement ouverte/visible */
   active?: boolean;
+  delegateReplayOnEnd?: boolean;
 }>(), {
   card: undefined,
   active: true,
+  delegateReplayOnEnd: false,
 })
 
-const emit = defineEmits(['loaded', 'finishPlaying', 'play-state-changed'])
+const emit = defineEmits(['loaded', 'finishPlaying', 'play-state-changed', 'replay-requested'])
 
 // State
 const isLoadingTrack = ref(false)
@@ -304,6 +306,11 @@ const cleanup = () => {
 
 const Power = async () => {
   if (isEndOfTrack.value) {
+    if (props.delegateReplayOnEnd) {
+      emit('replay-requested')
+      return
+    }
+
     Rewind()
     return
   }

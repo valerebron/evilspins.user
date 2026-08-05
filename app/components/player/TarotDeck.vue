@@ -2,13 +2,15 @@
   <main class="tarot-player" :class="{ 'tarot-player--embedded': props.embedded }">
     <section class="tarot-player__deck-stage">
       <div class="tarot-player__deck" :class="{ 'is-active': activeDeck === 'A' }" :aria-hidden="activeDeck !== 'A'">
-        <MixDeckCard ref="deckARef" label="A" :card="deckA.card" :active="activeDeck === 'A'"
-          @play-state-changed="(isPlaying) => onDeckPlayStateChanged('A', isPlaying)" />
+        <MixDeckCard ref="deckARef" label="A" :card="deckA.card" :active="activeDeck === 'A'" delegate-replay-on-end
+          @play-state-changed="(isPlaying) => onDeckPlayStateChanged('A', isPlaying)"
+          @replay-requested="restartCompilation" />
       </div>
 
       <div class="tarot-player__deck" :class="{ 'is-active': activeDeck === 'B' }" :aria-hidden="activeDeck !== 'B'">
-        <MixDeckCard ref="deckBRef" label="B" :card="deckB.card" :active="activeDeck === 'B'"
-          @play-state-changed="(isPlaying) => onDeckPlayStateChanged('B', isPlaying)" />
+        <MixDeckCard ref="deckBRef" label="B" :card="deckB.card" :active="activeDeck === 'B'" delegate-replay-on-end
+          @play-state-changed="(isPlaying) => onDeckPlayStateChanged('B', isPlaying)"
+          @replay-requested="restartCompilation" />
       </div>
     </section>
 
@@ -46,10 +48,13 @@ const deckBRef = ref<InstanceType<typeof MixDeckCard> | null>(null)
 
 const deckA = reactive<{ card: Card | null }>({ card: null })
 const deckB = reactive<{ card: Card | null }>({ card: null })
+const deckAQueueIndex = ref<number | null>(null)
+const deckBQueueIndex = ref<number | null>(null)
 
 const activeDeck = ref<'A' | 'B'>('A')
 const autoplayBlocked = ref(false)
 const isTransitioning = ref(false)
+const hasReachedQueueEnd = ref(false)
 const cards = ref<Card[]>([])
 const cursor = ref(0)
 const deckCrossfadeDuration = `${DECK_CROSSFADE_MS}ms`
@@ -84,6 +89,17 @@ const requestedSide = computed<'A' | 'B'>(() => props.boxId.endsWith('B') ? 'B' 
 const baseBoxId = computed(() => props.boxId.replace(/[AB]$/, ''))
 
 const getDeckRef = (deck: 'A' | 'B') => deck === 'A' ? deckARef.value : deckBRef.value
+
+const getDeckQueueIndex = (deck: 'A' | 'B') => deck === 'A' ? deckAQueueIndex.value : deckBQueueIndex.value
+
+const setDeckQueueIndex = (deck: 'A' | 'B', index: number | null) => {
+  if (deck === 'A') {
+    deckAQueueIndex.value = index
+    return
+  }
+
+  deckBQueueIndex.value = index
+}
 
 const getInactiveDeck = () => activeDeck.value === 'A' ? 'B' : 'A'
 
@@ -139,20 +155,17 @@ const resolveBoxCards = async () => {
     return
   }
 
-  cards.value = [
-    ...orderedCards.slice(startIndex),
-    ...orderedCards.slice(0, startIndex),
-  ]
-  cursor.value = 0
+  cards.value = orderedCards
+  cursor.value = startIndex
 }
 
 const takeNextCard = () => {
-  if (cards.value.length === 0) {
+  if (cards.value.length === 0 || cursor.value >= cards.value.length) {
     return null
   }
 
-  const card = cards.value[cursor.value % cards.value.length]
-  cursor.value = (cursor.value + 1) % cards.value.length
+  const card = cards.value[cursor.value]
+  cursor.value += 1
   return card
 }
 
@@ -163,8 +176,21 @@ const waitUntilReady = async (deck: 'A' | 'B') => {
 }
 
 const loadDeckTrack = async (deck: 'A' | 'B') => {
+  const nextIndex = cursor.value
   const nextCard = takeNextCard()
-  if (!nextCard) return false
+  if (!nextCard) {
+    hasReachedQueueEnd.value = true
+    if (deck === 'A') {
+      deckA.card = null
+    } else {
+      deckB.card = null
+    }
+    setDeckQueueIndex(deck, null)
+    return false
+  }
+
+  hasReachedQueueEnd.value = false
+  setDeckQueueIndex(deck, nextIndex)
 
   if (deck === 'A') {
     deckA.card = nextCard
@@ -205,10 +231,19 @@ const switchDeck = async () => {
 
   isTransitioning.value = true
 
+  const fromQueueIndex = getDeckQueueIndex(fromDeck)
+  const toQueueIndex = getDeckQueueIndex(toDeck)
+  if (toQueueIndex === null || (fromQueueIndex !== null && toQueueIndex <= fromQueueIndex)) {
+    hasReachedQueueEnd.value = true
+    isTransitioning.value = false
+    return
+  }
+
   const toReady = await waitUntilReady(toDeck)
   if (!toReady) {
     const loaded = await loadDeckTrack(toDeck)
     if (!loaded) {
+      hasReachedQueueEnd.value = true
       isTransitioning.value = false
       return
     }
@@ -249,7 +284,7 @@ const monitorRemainingTime = () => {
   }
 
   monitorTimer = window.setInterval(async () => {
-    if (isTransitioning.value || autoplayBlocked.value) return
+    if (isTransitioning.value || autoplayBlocked.value || hasReachedQueueEnd.value) return
 
     const activeRef = getDeckRef(activeDeck.value)
     if (!activeRef) return
@@ -296,6 +331,31 @@ const togglePlayback = async () => {
   }
 
   return Boolean(isPlaying)
+}
+
+const restartCompilation = async () => {
+  if (isTransitioning.value || cards.value.length === 0) {
+    return
+  }
+
+  isTransitioning.value = true
+  autoplayBlocked.value = false
+  hasReachedQueueEnd.value = false
+
+  deckARef.value?.pause()
+  deckBRef.value?.pause()
+
+  deckA.card = null
+  deckB.card = null
+  setDeckQueueIndex('A', null)
+  setDeckQueueIndex('B', null)
+  cursor.value = 0
+
+  await nextTick()
+  await prepareInitialDecks()
+  await startPlayback()
+
+  isTransitioning.value = false
 }
 
 onMounted(async () => {

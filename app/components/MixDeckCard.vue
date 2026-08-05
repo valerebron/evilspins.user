@@ -12,8 +12,9 @@
     </article>
 
     <Platine v-if="card && isPlatineMounted" :key="`platine-${card.slug}`" ref="platineRef" :card="card"
-      :active="active" class="mix-deck__platine" :class="{ 'mix-deck__platine--visible': isOpen }"
-      @loaded="onTrackLoaded" @finishPlaying="onFinishPlaying" @play-state-changed="onPlayStateChanged" />
+      :active="active" :delegate-replay-on-end="delegateReplayOnEnd" class="mix-deck__platine"
+      :class="{ 'mix-deck__platine--visible': isOpen }" @loaded="onTrackLoaded" @finishPlaying="onFinishPlaying"
+      @play-state-changed="onPlayStateChanged" @replay-requested="onReplayRequested" />
   </section>
 </template>
 
@@ -25,11 +26,13 @@ const props = defineProps<{
   card: Card | null
   label: 'A' | 'B'
   active: boolean
+  delegateReplayOnEnd?: boolean
 }>()
 
 const emit = defineEmits<{
   ready: []
   'play-state-changed': [isPlaying: boolean]
+  'replay-requested': []
 }>()
 
 const platineRef = ref<InstanceType<typeof Platine> | null>(null)
@@ -95,6 +98,10 @@ const onFinishPlaying = () => {
 
 const onPlayStateChanged = (isPlaying: boolean) => {
   emit('play-state-changed', isPlaying)
+}
+
+const onReplayRequested = () => {
+  emit('replay-requested')
 }
 
 const resume = async () => {
