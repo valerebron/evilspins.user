@@ -5,13 +5,15 @@
       Create card
     </button>
 
-    <button v-if="hasSelection" type="button" class="btn relative">
-      <printSVG />
-      Print
-      <button v-if="props.selectedCount > 0" type="button" @click="emit('clear-selection')">
+    <div v-if="hasSelection" class="relative">
+      <button type="button" class="btn" @click="emit('print')">
+        <printSVG />
+        Print
+      </button>
+      <button v-if="props.selectedCount > 0" type="button" @click.stop="emit('clear-selection')">
         <span class="badge badge-primary badge absolute -top-2 -right-2 size-5 p-0">{{ props.selectedCount }}</span>
       </button>
-    </button>
+    </div>
 
     <!-- Google -->
     <button v-if="hasSelection" type="button" class="btn relative">
@@ -54,6 +56,7 @@ const hasSelection = computed(() => props.selectedCount > 0)
 
 const emit = defineEmits<{
   nfc: []
+  print: []
   'clear-selection': []
   'toggle-all-cards': []
 }>()

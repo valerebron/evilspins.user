@@ -41,6 +41,7 @@ export const IMPOSITION_COLS = 5
 export const CARDS_PER_SHEET = IMPOSITION_ROWS * IMPOSITION_COLS
 
 export type BackAlignmentMode = 'mirror' | 'aligned'
+export type PrintExportMode = 'duplex' | 'separate'
 
 export interface ImpositionSlot {
   index: number
