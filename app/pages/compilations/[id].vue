@@ -181,7 +181,7 @@ const scrollToPlaybackCard = async (slug: string) => {
   })
 }
 
-const handleTrackStarted = (card: CardType) => {
+const handleTrackStarted = async (card: CardType) => {
   const slug = card.slug || ''
   if (!slug) {
     return
@@ -189,9 +189,11 @@ const handleTrackStarted = (card: CardType) => {
 
   playbackStartSlug.value = slug
   playbackIsPlaying.value = true
+  await nextTick()
+  await scrollToPlaybackCard(slug)
 }
 
-const handlePlaybackStateChanged = (payload: { card: CardType, isPlaying: boolean }) => {
+const handlePlaybackStateChanged = async (payload: { card: CardType, isPlaying: boolean }) => {
   const slug = payload.card.slug || ''
   if (!slug) {
     return
@@ -199,6 +201,8 @@ const handlePlaybackStateChanged = (payload: { card: CardType, isPlaying: boolea
 
   if (playbackStartSlug.value !== slug) {
     playbackStartSlug.value = slug
+    await nextTick()
+    await scrollToPlaybackCard(slug)
   }
 
   playbackIsPlaying.value = payload.isPlaying
@@ -250,7 +254,6 @@ watch(routeBoxId, async () => {
 .mix-player-page {
   --dock-height: calc(64px + env(safe-area-inset-bottom, 0px));
   height: calc(100svh - var(--dock-height));
-  padding: 12px;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -261,23 +264,21 @@ watch(routeBoxId, async () => {
   height: 100%;
   grid-template-rows: minmax(0, 1fr) minmax(0, min(20%, 300px));
   gap: 10px;
-  overflow: hidden;
 }
 
 .mix-playback__deck-wrap {
   min-height: 0;
-  overflow: hidden;
 }
 
 .mix-playback__cards {
   list-style: none;
   margin: 0;
-  padding: 0;
-  padding-bottom: 20px;
+  padding: 14px 20vw 20px;
   height: 100%;
   display: flex;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: none;
   gap: 10px;
 }
 

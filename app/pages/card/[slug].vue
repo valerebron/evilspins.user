@@ -1,11 +1,13 @@
 <template>
-  <Card v-if="card" :card="card" :is-face-up="isFaceUp" :autoplay="autoplay" :show-play-button="showPlayButton"
-    click-behavior="self-play" />
+  <Card v-if="card" class="card-reveal" :class="{ 'is-visible': cardVisible }" :card="card" :is-face-up="isFaceUp"
+    :autoplay="autoplay" :show-play-button="showPlayButton" click-behavior="self-play" />
 </template>
 
 <script setup lang="ts">
+import type { Card } from '~~/types/types'
 import { useSplashScreen } from '~/composables/useSplashScreen'
 
+const cardVisible = ref(false)
 const isFaceUp = ref(false)
 const showPlayButton = ref(false)
 const route = useRoute()
@@ -27,6 +29,10 @@ onMounted(async () => {
   if (!isSplashDone.value) {
     await waitForSplashDone()
   }
+
+  requestAnimationFrame(() => {
+    cardVisible.value = true
+  })
 
   flipTimeout = setTimeout(() => {
     isFaceUp.value = true
@@ -50,3 +56,26 @@ onUnmounted(() => {
   }
 })
 </script>
+
+<style lang="scss" scoped>
+.card-reveal {
+  opacity: 0;
+  transform: translateY(24vh) scale(0.96);
+}
+
+.card-reveal.is-visible {
+  animation: card-slide-up 650ms cubic-bezier(0.18, 0.8, 0.22, 1) forwards;
+}
+
+@keyframes card-slide-up {
+  from {
+    transform: translateY(24vh) scale(0.96);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+</style>

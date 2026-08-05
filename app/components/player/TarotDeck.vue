@@ -389,7 +389,6 @@ defineExpose({
   display: grid;
   place-items: center;
   position: relative;
-  overflow: hidden;
   padding: 12px;
 }
 
