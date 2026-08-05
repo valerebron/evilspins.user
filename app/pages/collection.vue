@@ -109,8 +109,9 @@
     <Card :card="card" :is-face-up="true" :show-play-button="false" :selectable="true" :selected="isCardSelected(card)"
       click-behavior="self-play" @update:selected="updateCardSelection(card, $event)" />
   </article>
-  <CollectionActions class="fixed bottom-20" :selected-count="selectedCount" :show-nfc="hasCurrentlyPlayingCard"
-    :is-writing-nfc="isWritingNfc" :is-loading-all-cards="isLoadingAllCards"
+  <CollectionActions class="fixed bottom-20" :selected-count="selectedCount" :show-nfc="selectedCount > 0"
+    :is-writing-nfc="isWritingNfc" :is-nfc-disabled="!isNfcAvailable" :nfc-title="nfcButtonTitle"
+    :is-loading-all-cards="isLoadingAllCards"
     :all-cards-button-label="allCardsButtonLabel" @nfc="writeCurrentTrackToNfc" @print="printSelectedCards"
     @clear-selection="clearSelectedCards" @toggle-all-cards="toggleAllCards" />
 </template>
@@ -200,13 +201,32 @@ const currentlyPlayingCard = computed<CardType | null>(() => {
   return displayedCards.value.find(card => card.slug === slug) || null
 })
 
-const hasCurrentlyPlayingCard = computed(() => Boolean(currentlyPlayingCard.value))
 const selectedCount = computed(() => selectedCardSlugs.value.size)
 const selectedCardsForPrint = computed<PrintCardItem[]>(() => {
   return Object.values(selectedCardsBySlug.value) as PrintCardItem[]
 })
+const selectedCardForNfc = computed<CardType | null>(() => {
+  const currentCard = currentlyPlayingCard.value
+  if (currentCard?.slug && selectedCardSlugs.value.has(currentCard.slug)) {
+    return currentCard
+  }
+
+  return selectedCardsForPrint.value[0] || null
+})
 const paperFormatEntries = Object.entries(PAPER_FORMATS)
 const printSheetCount = computed(() => getSheetCount(selectedCardsForPrint.value.length))
+const isNfcAvailable = computed(() => canWriteNfc())
+const nfcButtonTitle = computed(() => {
+  if (isWritingNfc.value) {
+    return 'Ecriture NFC en cours'
+  }
+
+  if (!isNfcAvailable.value) {
+    return 'NDEFReader indisponible dans ce navigateur'
+  }
+
+  return selectedCardForNfc.value ? `Ecrire ${selectedCardForNfc.value.title} sur un tag NFC` : 'Selectionne une carte'
+})
 const {
   generatePdf,
   isGenerating: isGeneratingPdf,
@@ -397,7 +417,7 @@ const writeCurrentTrackToNfc = async () => {
   nfcStatus.value = ''
   nfcStatusTone.value = ''
 
-  const card = currentlyPlayingCard.value
+  const card = selectedCardForNfc.value
 
   if (!card) {
     showNfcToast('error', 'Aucune carte en lecture.')

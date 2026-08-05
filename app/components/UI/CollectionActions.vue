@@ -29,8 +29,9 @@
       {{ props.allCardsButtonLabel }}
     </button>
 
-    <button v-if="hasSelection && props.showNfc" type="button" class="btn" :disabled="props.isWritingNfc"
-      @click="emit('nfc')">
+    <button v-if="hasSelection && props.showNfc" type="button" class="btn"
+      :class="{ 'btn-disabled': props.isWritingNfc || props.isNfcDisabled }"
+      :disabled="props.isWritingNfc || props.isNfcDisabled" :title="props.nfcTitle" @click="emit('nfc')">
       <NfcSVG />
       {{ props.isWritingNfc ? 'ecritures ...' : 'NFC' }}
     </button>
@@ -42,12 +43,16 @@ const props = withDefaults(defineProps<{
   selectedCount?: number
   showNfc?: boolean
   isWritingNfc?: boolean
+  isNfcDisabled?: boolean
+  nfcTitle?: string
   isLoadingAllCards?: boolean
   allCardsButtonLabel?: string
 }>(), {
   selectedCount: 0,
   showNfc: true,
   isWritingNfc: false,
+  isNfcDisabled: false,
+  nfcTitle: '',
   isLoadingAllCards: false,
   allCardsButtonLabel: 'All cards',
 })
