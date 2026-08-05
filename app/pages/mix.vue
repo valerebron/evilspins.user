@@ -14,9 +14,11 @@
           <div class="card-body">
             <p class="mix-board__deck-meta text-center">{{ deckACard?.title || 'Aucune carte' }}</p>
             <div class="mix-board__turntable">
-              <MixDeckCard v-if="deckACard" label="A" :card="deckACard" :active="true" />
+              <MixDeckCard v-if="deckACard" ref="deckARef" label="A" :card="deckACard" :active="true" />
               <div v-else class="mix-board__turntable-empty">Selectionne une carte</div>
             </div>
+            <MixDeckWaveform :card="deckACard" label="A" class="mix-board__deck-waveform"
+              :current-time="deckATime.current" :duration="deckATime.duration" @seek="seekDeckA" />
           </div>
         </article>
 
@@ -24,9 +26,11 @@
           <div class="card-body">
             <p class="mix-board__deck-meta text-center">{{ deckBCard?.title || 'Aucune carte' }}</p>
             <div class="mix-board__turntable">
-              <MixDeckCard v-if="deckBCard" label="B" :card="deckBCard" :active="true" />
+              <MixDeckCard v-if="deckBCard" ref="deckBRef" label="B" :card="deckBCard" :active="true" />
               <div v-else class="mix-board__turntable-empty">Selectionne une carte</div>
             </div>
+            <MixDeckWaveform :card="deckBCard" label="B" class="mix-board__deck-waveform"
+              :current-time="deckBTime.current" :duration="deckBTime.duration" @seek="seekDeckB" />
           </div>
         </article>
       </section>
@@ -64,6 +68,7 @@
 
 <script setup lang="ts">
 import type { Card as CardType } from '~~/types/types'
+import MixDeckCard from '~/components/MixDeckCard.vue'
 
 const MIN_SLOT_COUNT = 10
 
@@ -71,6 +76,12 @@ const mixCardsStore = useMixCardsStore()
 const selectedCards = computed<CardType[]>(() => mixCardsStore.selectedCards)
 const tableCards = ref<CardType[]>([])
 const dragState = ref<{ from: number; over: number | null } | null>(null)
+const deckARef = ref<InstanceType<typeof MixDeckCard> | null>(null)
+const deckBRef = ref<InstanceType<typeof MixDeckCard> | null>(null)
+const deckATime = reactive({ current: 0, duration: 0 })
+const deckBTime = reactive({ current: 0, duration: 0 })
+
+let deckMonitorTimer: ReturnType<typeof setInterval> | null = null
 
 const slotCount = computed(() => Math.max(MIN_SLOT_COUNT, tableCards.value.length))
 const deckACard = computed(() => tableCards.value[0] || null)
@@ -86,6 +97,65 @@ watch(
 
 const backToCollection = async () => {
   await navigateTo('/collection')
+}
+
+const syncDeckTime = (
+  deckRef: InstanceType<typeof MixDeckCard> | null,
+  target: { current: number; duration: number }
+) => {
+  if (!deckRef) {
+    target.current = 0
+    target.duration = 0
+    return
+  }
+
+  const duration = Number(deckRef.getDuration?.() || 0)
+  const current = Number(deckRef.getCurrentTime?.() || 0)
+
+  target.duration = Number.isFinite(duration) ? Math.max(0, duration) : 0
+  target.current = Number.isFinite(current) ? Math.max(0, Math.min(current, target.duration || current)) : 0
+}
+
+const refreshDeckTimes = () => {
+  syncDeckTime(deckARef.value, deckATime)
+  syncDeckTime(deckBRef.value, deckBTime)
+}
+
+const seekDeckPosition = async (
+  deckRef: InstanceType<typeof MixDeckCard> | null,
+  target: { current: number; duration: number },
+  seconds: number,
+) => {
+  if (!deckRef) {
+    return
+  }
+
+  const isReady = await deckRef.waitUntilReady?.(2000)
+  if (!isReady) {
+    return
+  }
+
+  const duration = Number(deckRef.getDuration?.() || target.duration || 0)
+  const clampedSeconds = duration > 0
+    ? Math.max(0, Math.min(seconds, duration))
+    : Math.max(0, seconds)
+
+  const didJump = await deckRef.jumpToPosition?.(clampedSeconds)
+  if (!didJump) {
+    // Fallback: restart playback from target if direct jump is unavailable.
+    await deckRef.play?.(clampedSeconds, false)
+  }
+
+  target.current = clampedSeconds
+  refreshDeckTimes()
+}
+
+const seekDeckA = async (seconds: number) => {
+  await seekDeckPosition(deckARef.value, deckATime, seconds)
+}
+
+const seekDeckB = async (seconds: number) => {
+  await seekDeckPosition(deckBRef.value, deckBTime, seconds)
 }
 
 const onCardDragStart = (index: number, event: DragEvent) => {
@@ -152,6 +222,24 @@ const onDropToSlot = (targetIndex: number) => {
   moveCard(fromIndex, clampedTarget, true)
   dragState.value = null
 }
+
+watch([deckACard, deckBCard], () => {
+  refreshDeckTimes()
+})
+
+onMounted(() => {
+  refreshDeckTimes()
+  deckMonitorTimer = setInterval(() => {
+    refreshDeckTimes()
+  }, 120)
+})
+
+onBeforeUnmount(() => {
+  if (deckMonitorTimer) {
+    clearInterval(deckMonitorTimer)
+    deckMonitorTimer = null
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -211,11 +299,15 @@ const onDropToSlot = (targetIndex: number) => {
 }
 
 .mix-board__deck-meta {
-  margin-top: -4px;
-  margin-bottom: 6px;
+  margin-top: 0;
+  margin-bottom: 8px;
   opacity: 0.75;
   font-size: 0.8rem;
   min-height: 1.1rem;
+}
+
+.mix-board__deck-waveform {
+  margin-bottom: 10px;
 }
 
 .mix-board__turntable-empty {

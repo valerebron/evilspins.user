@@ -133,6 +133,22 @@ const getRemainingTime = () => {
   return platineRef.value?.getRemainingTime?.() ?? Infinity
 }
 
+const getCurrentTime = () => {
+  return platineRef.value?.getCurrentTime?.() ?? 0
+}
+
+const getDuration = () => {
+  return platineRef.value?.getDuration?.() ?? 0
+}
+
+const jumpToPosition = async (position: number) => {
+  if (!platineRef.value) {
+    return false
+  }
+
+  return await platineRef.value.jumpToPosition?.(position)
+}
+
 const jumpToNearEnd = async (secondsBeforeEnd = 5) => {
   if (!platineRef.value) return false
   return await platineRef.value.jumpToNearEnd?.(secondsBeforeEnd)
@@ -160,6 +176,9 @@ defineExpose({
   pause,
   freezeBobineFor,
   jumpToNearEnd,
+  jumpToPosition,
+  getCurrentTime,
+  getDuration,
   unload,
   setVolume,
   getRemainingTime,
