@@ -1,6 +1,6 @@
 <template>
   <div class="platine" :class="{ 'loading': isLoadingTrack, 'mounted': isMounted, 'playing': isPlaying }">
-    <div v-if="false" class="debug">
+    <div v-if="showDebugOverlay" class="debug">
       <button @click="Reverse">
         <b v-if="isReversed">reversed</b>
         <b v-else>normal</b>
@@ -14,8 +14,17 @@
       <button @click="PrevFourSec">
         Prev Five
       </button>
-      <!-- <div>{{ progressPercentage }}</div> -->
-      <div>{{ (currentSpeed).toFixed(2) }}</div>
+      <div class="debug__track">
+        <div class="debug__bar">
+          <div class="debug__bar-fill debug__bar-fill--disc" :style="{ width: `${debugDiscProgress}%` }" />
+          <div class="debug__bar-fill debug__bar-fill--audio" :style="{ width: `${debugAudioProgress}%` }" />
+        </div>
+        <div class="debug__labels">
+          <span>disc {{ formatDebugTime(debugDiscSeconds) }}</span>
+          <span>audio {{ formatDebugTime(debugAudioSeconds) }}</span>
+          <span>speed {{ currentSpeed.toFixed(2) }}</span>
+        </div>
+      </div>
     </div>
     <div class="disc" ref="discRef" id="disc">
       <div class="bobine" :style="{
@@ -62,6 +71,8 @@ const progressPercentage = ref(0)
 const frozenProgressPercentage = ref<number | null>(null)
 const currentTurns = ref(0)
 const totalTurns = ref(0)// Refs pour les instances
+const debugDiscSeconds = ref(0)
+const debugAudioSeconds = ref(0)
 
 // Refs pour les instances
 const disc = ref<Disc | null>(null)
@@ -72,6 +83,17 @@ const isMounted = ref(false)
 const isPlaying = computed(() => Math.abs(Math.round(sampler.value?.currentSpeed || 0)) !== 0)
 const isReversed = computed(() => disc.value?.isReversed || false)
 const currentSpeed = computed(() => sampler.value?.currentSpeed || 0)
+const showDebugOverlay = false
+const debugDiscProgress = computed(() => {
+  const duration = getDuration()
+  if (!duration) return 0
+  return (debugDiscSeconds.value / duration) * 100
+})
+const debugAudioProgress = computed(() => {
+  const duration = getDuration()
+  if (!duration) return 0
+  return (debugAudioSeconds.value / duration) * 100
+})
 const visibleProgressPercentage = computed(() => frozenProgressPercentage.value ?? progressPercentage.value)
 const { requestWakeLock, releaseWakeLock } = useScreenWakeLock()
 const { resolveMediaUrl } = useMediaUrl()
@@ -109,6 +131,15 @@ const initPlatine = (element: HTMLElement) => {
       }
     }
 
+    disc.value.callbacks.onDragEnded = (secondsPlayed) => {
+      if (!sampler.value || !disc.value) return
+
+      // Le buffer source ne se recale pas tout seul après un scratch prolongé.
+      // On le recrée sur la position disque courante pour supprimer le retard accumulé.
+      sampler.value.play(Math.max(0, secondsPlayed), false)
+      updateTurns()
+    }
+
     disc.value.callbacks.onLoop = ({ playbackSpeed, isReversed, secondsPlayed }) => {
       // Ne mettre à jour que si nécessaire et s'assurer que la position est valide
       if (Math.abs((sampler.value?.currentSpeed || 0) - playbackSpeed) > 0.01) {
@@ -122,6 +153,9 @@ const initPlatine = (element: HTMLElement) => {
 
 const updateTurns = () => {
   if (!disc.value) return
+
+  debugDiscSeconds.value = disc.value.secondsPlayed
+  debugAudioSeconds.value = sampler.value?.getDebugPlayheadSeconds?.() || 0
 
   const newTurns = disc.value.secondsPlayed * 0.75
   const newTotalTurns = (disc.value as any)._duration * 0.75
@@ -218,6 +252,16 @@ const getRemainingTime = () => {
   const duration = getDuration()
   if (!duration) return Infinity
   return Math.max(0, duration - getCurrentTime())
+}
+
+const formatDebugTime = (seconds: number) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return '00:00.00'
+  }
+
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds - (minutes * 60)
+  return `${String(minutes).padStart(2, '0')}:${remainingSeconds.toFixed(2).padStart(5, '0')}`
 }
 
 const jumpToPosition = async (position: number) => {
@@ -366,7 +410,7 @@ const Rewind = async () => {
     }
 
     requestAnimationFrame(slowDown)
-    void play()
+    void play(0, false)
   }
 
   const performRewind = () => {
@@ -376,7 +420,7 @@ const Rewind = async () => {
     }
 
     // Remettre à zéro la position
-    sampler.value?.play(0)
+    sampler.value?.play(0, false)
     disc.value?.setAngle(0)
 
     // Effet de scratch rapide
@@ -409,7 +453,7 @@ const Rewind = async () => {
         // Si c'était en lecture avant, relancer la lecture
         if (wasPlaying) {
           setTimeout(() => {
-            sampler.value?.play(0)
+            sampler.value?.play(0, false)
           }, 50)
         }
       }
@@ -586,6 +630,64 @@ defineExpose({
   display: flex;
   width: 100%;
   height: 100%;
+
+  .debug {
+    position: absolute;
+    z-index: 120;
+    inset: 10px 10px auto 10px;
+    display: grid;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(8, 8, 12, 0.78);
+    color: #f3f4f6;
+    backdrop-filter: blur(12px);
+    font-size: 12px;
+    line-height: 1.2;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+  }
+
+  .debug button {
+    pointer-events: auto;
+    width: fit-content;
+  }
+
+  .debug__track {
+    display: grid;
+    gap: 6px;
+  }
+
+  .debug__bar {
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .debug__bar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: inherit;
+  }
+
+  .debug__bar-fill--disc {
+    background: rgba(96, 165, 250, 0.55);
+  }
+
+  .debug__bar-fill--audio {
+    background: rgba(251, 191, 36, 0.55);
+  }
+
+  .debug__labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    opacity: 0.95;
+    font-variant-numeric: tabular-nums;
+  }
 
   .disc {
     pointer-events: auto;

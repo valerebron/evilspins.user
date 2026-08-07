@@ -15,11 +15,11 @@ class Sampler {
   private stopTimeoutId: number | null = null // ID du setTimeout pour annuler l'arrêt
 
   isAudioContextRunning() {
-    return this.audioContext.state === 'running'
+    return String(this.audioContext.state) === 'running'
   }
 
   async ensureAudioContextRunning() {
-    if (this.audioContext.state === 'running') {
+    if (String(this.audioContext.state) === 'running') {
       return true
     }
 
@@ -29,7 +29,7 @@ class Sampler {
       return false
     }
 
-    return this.audioContext.state === 'running'
+    return String(this.audioContext.state) === 'running'
   }
 
   constructor() {
@@ -52,7 +52,7 @@ class Sampler {
     let count = 0
 
     for (let i = 0; i < channelData.length; i += step) {
-      const sample = channelData[i]
+      const sample = channelData[i] ?? 0
       sumSquares += sample * sample
       count++
     }
