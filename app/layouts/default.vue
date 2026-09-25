@@ -36,6 +36,7 @@ useOutsideClick(() => {
 
   place-items: center;
   justify-content: center;
+  align-content: center;
 
   min-height: calc(100svh - 64px);
 }

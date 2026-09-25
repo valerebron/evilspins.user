@@ -24,7 +24,7 @@ module.exports = {
         xxs: '0.625rem' // 10px par exemple
       },
       screens: {
-        '2sm': '320px'
+        'xsm': '340px'
       },
       transitionDuration: {
         2000: '2000ms'

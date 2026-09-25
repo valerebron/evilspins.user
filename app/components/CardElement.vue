@@ -143,7 +143,7 @@ const onCardEnter = (event: KeyboardEvent) => {
     height: 100%;
     backface-visibility: hidden;
     will-change: transform;
-    background-color: rgba(255, 255, 255, 0.5);
+    background-color: white;
 
     .cover {
       @apply flex-1 flex justify-center items-center overflow-hidden cursor-pointer;

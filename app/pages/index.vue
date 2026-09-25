@@ -42,24 +42,14 @@ onUnmounted(() => {
   transform: translateY(24vh) scale(0.96);
 }
 
-.card-reveal:nth-child(1) {
-  margin-top: 10vh;
-}
-
+.card-reveal:nth-child(1),
 .card-reveal:nth-child(3) {
-  margin-top: 10vh;
-}
-
-@media (max-width: 540px) {
-
-  .card-reveal:nth-child(1),
-  .card-reveal:nth-child(3) {
-    margin-top: 0;
+  @media (min-width: 440px) {
+    margin-top: 10vh;
   }
 }
 
 .card-reveal.is-visible {
-  // opacity: 1;
   animation: card-slide-up 650ms cubic-bezier(0.18, 0.8, 0.22, 1) forwards;
   animation-delay: var(--card-delay, 0ms);
 }
