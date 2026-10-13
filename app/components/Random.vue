@@ -11,7 +11,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.card {
-  width: 20vh;
+@media (max-width: 768px) {
+  .card {
+    width: 20vh;
+    /* or any other mobile-specific width */
+  }
 }
 </style>

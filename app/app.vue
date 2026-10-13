@@ -4,11 +4,11 @@
     <NuxtPage ref="pageContent" />
   </NuxtLayout>
 
-  <Transition name="splash" @after-leave="markSplashDone">
+  <!-- <Transition name="splash" @after-leave="markSplashDone">
     <div v-if="isSplashRenderable && showSplash" class="splash-screen" aria-label="Chargement" role="status">
       <object class="splash-logo" data="/logo.svg" type="image/svg+xml" aria-label="Logo Evilspins" />
     </div>
-  </Transition>
+  </Transition> -->
 </template>
 
 <script setup lang="ts">
