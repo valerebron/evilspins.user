@@ -14,7 +14,6 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .card {
     width: 20vh;
-    /* or any other mobile-specific width */
   }
 }
 </style>

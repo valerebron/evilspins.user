@@ -5,7 +5,6 @@
 
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
-import { useSplashScreen } from '~/composables/useSplashScreen'
 
 const cardVisible = ref(false)
 const isFaceUp = ref(false)
@@ -14,7 +13,6 @@ const route = useRoute()
 const slug = route.params.slug as string
 const autoplay = computed(() => route.query.autoplay === 'true')
 const { data: card, pending, error } = await useFetch<Card>(`/api/card/${slug}`)
-const { isSplashDone, waitForSplashDone } = useSplashScreen()
 
 let flipTimeout: ReturnType<typeof setTimeout> | null = null
 let showPlayButtonTimeout: ReturnType<typeof setTimeout> | null = null
@@ -26,10 +24,6 @@ useHead({
 })
 
 onMounted(async () => {
-  if (!isSplashDone.value) {
-    await waitForSplashDone()
-  }
-
   requestAnimationFrame(() => {
     cardVisible.value = true
   })

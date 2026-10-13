@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const cardsVisible = ref(false)
 
@@ -16,23 +16,8 @@ const revealCards = () => {
   })
 }
 
-const onSplashFinished = () => {
-  revealCards()
-}
-
 onMounted(() => {
-  const splashAwareWindow = window as Window & { __evilspinsSplashDone?: boolean }
-
-  if (splashAwareWindow.__evilspinsSplashDone) {
-    revealCards()
-    return
-  }
-
-  window.addEventListener('splash-finished', onSplashFinished, { once: true })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('splash-finished', onSplashFinished)
+  revealCards()
 })
 </script>
 

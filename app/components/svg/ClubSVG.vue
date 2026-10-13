@@ -4,13 +4,6 @@
     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg"
     xmlns:svg="http://www.w3.org/2000/svg">
-    <sodipodi:namedview id="namedview1" pagecolor="#505050" bordercolor="#eeeeee" borderopacity="1"
-      inkscape:showpageshadow="0" inkscape:pageopacity="0" inkscape:pagecheckerboard="0" inkscape:deskcolor="#505050"
-      inkscape:document-units="mm" inkscape:zoom="0.1984375" inkscape:cx="2980.7874" inkscape:cy="798.74016"
-      inkscape:window-width="1920" inkscape:window-height="1132" inkscape:window-x="0" inkscape:window-y="0"
-      inkscape:window-maximized="1" inkscape:current-layer="layer1">
-      <inkscape:page x="0" y="0" width="180" height="180" id="page1" margin="0 0.625 0 0" bleed="0" />
-    </sodipodi:namedview>
     <defs id="defs1" />
     <g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1">
       <path id="path3" style="fill:currentColor;stroke-width:0.264583"

@@ -17,7 +17,6 @@
 <script setup lang="ts">
 import type { Card } from '~~/types/types'
 import { timeout } from '~/utils/timeout'
-import { useSplashScreen } from '~/composables/useSplashScreen'
 import CardElement from './CardElement.vue'
 
 const props = withDefaults(defineProps<{
@@ -48,7 +47,6 @@ const emit = defineEmits<{
   'button-click': [payload: { button: string; card: Card }]
   'update:selected': [selected: boolean]
 }>()
-const { isSplashDone, waitForSplashDone } = useSplashScreen()
 const { markCardFlipped, markCardPlayedToEnd } = usePersistentCardState()
 
 const isPlatineMounted = ref(false)
@@ -76,10 +74,6 @@ const startMountAnimation = () => {
 }
 
 onMounted(async () => {
-  if (!isSplashDone.value) {
-    await waitForSplashDone()
-  }
-
   startMountAnimation()
 })
 
@@ -361,10 +355,6 @@ watch(isOpen, (open) => {
 watch(() => props.autoplay, async (autoplay) => {
   if (!isSelfPlayMode.value || !autoplay || isPlatineMounted.value) {
     return
-  }
-
-  if (!isSplashDone.value) {
-    await waitForSplashDone()
   }
 
   const canStart = await canAutoplayNow()
