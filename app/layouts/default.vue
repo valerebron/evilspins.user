@@ -2,7 +2,7 @@
   <section class="page" :class="{ 'page--fullscreen': isFullscreenPage }">
     <slot />
   </section>
-  <Dock />
+  <!-- <Dock /> -->
 </template>
 
 <script setup lang="ts">
@@ -32,13 +32,13 @@ useOutsideClick(() => {
   flex-wrap: wrap;
   flex-direction: row;
   overflow-x: visible;
-  margin-bottom: 64px;
+  margin-bottom: 0px;
 
   place-items: center;
   justify-content: center;
   align-content: center;
 
-  min-height: calc(100svh - 64px);
+  min-height: 100svh;
 }
 
 .page.page--fullscreen {
@@ -47,11 +47,7 @@ useOutsideClick(() => {
 
 .card {
   transition: width height opacity 0.7s;
-  width: 20vh;
-
-  @screen sm {
-    width: 33vh;
-  }
+  width: 33vh;
 
   &.open {
     width: 100%;

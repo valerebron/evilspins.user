@@ -1,7 +1,7 @@
 <template>
   <article class="print-card"
-    :class="[`face-${face}`, { 'back-mirror': face === 'back' && backAlignment === 'mirror', 'rounded-front': face === 'front' && roundedFront }]" :style="cardStyle"
-    aria-hidden="true">
+    :class="[`face-${face}`, { 'back-mirror': face === 'back' && backAlignment === 'mirror', 'rounded-front': face === 'front' && roundedFront }]"
+    :style="cardStyle" aria-hidden="true">
     <div class="trim-card" :style="{ borderRadius: face === 'front' ? (roundedFront ? '3.6mm' : '0') : '0' }">
       <template v-if="card">
         <CardElement class="card-element-print" :card="card" :is-face-up="face === 'front'" :is-loading="false"
@@ -166,7 +166,19 @@ const cardStyle = computed(() => {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 0.25mm 0.3mm rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 0.25mm 0.3mm rgba(0, 0, 0, 0.2)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.8));
+}
+
+.print-card :deep(.rank .suit-dark img) {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.6));
+}
+
+.print-card :deep(.rank img) {
+  box-shadow: 0 0 0 0.5mm white;
+}
+
+.print-card :deep(.rank .suit-dark .suit-svg) {
+  box-shadow: 0 0 0 0.5mm white, 0 0 2px rgba(255, 255, 255, 0.8);
 }
 
 .print-card :deep(.rank .number) {

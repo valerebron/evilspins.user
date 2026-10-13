@@ -9,3 +9,9 @@ onMounted(async () => {
   card.value = await $fetch<Card>('/api/card/random')
 })
 </script>
+
+<style scoped>
+.card {
+  width: 20vh;
+}
+</style>

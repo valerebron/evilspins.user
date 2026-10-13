@@ -9,7 +9,7 @@ import { useSplashScreen } from '~/composables/useSplashScreen'
 
 const cardVisible = ref(false)
 const isFaceUp = ref(false)
-const showPlayButton = ref(false)
+const showPlayButton = ref(true)
 const route = useRoute()
 const slug = route.params.slug as string
 const autoplay = computed(() => route.query.autoplay === 'true')

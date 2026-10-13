@@ -243,8 +243,18 @@ const onCardEnter = (event: KeyboardEvent) => {
     }
   }
 
+
   .play-button {
-    @apply absolute opacity-0 hover:opacity-100;
+    @apply absolute opacity-100;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .play-button {
+      @apply opacity-0 hover:opacity-100;
+    }
+  }
+
+  .play-button {
 
     &.loading {
       opacity: 1 !important;

@@ -22,7 +22,7 @@ const props = withDefaults(defineProps<{
 
 <style scoped lang="scss">
 .play-button {
-  @apply text-esyellow backdrop-blur-sm bg-black/25 transition-all duration-100 ease-in-out transform active:scale-90 scale-110 text-4xl font-bold;
+  @apply text-esyellow bg-black/50 transition-all duration-100 ease-in-out transform active:scale-90 scale-110 text-4xl font-bold;
   pointer-events: none;
   border-radius: 100%;
   height: 30%;

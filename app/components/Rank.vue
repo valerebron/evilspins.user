@@ -1,7 +1,11 @@
 <template>
-  <div class="rank flex items-center justify-center size-[20%] absolute top-[8%] left-[12%] text-[100%]">
-    <div class="suit absolute" :class="color">
-      <img :src="image" draggable="false" />
+  <div :class="{
+    'suit-dark': !isRedCard,
+    'suit-red': isRedCard,
+    'revert': isDarkBackground
+  }" class="rank flex items-center justify-center size-[20%] absolute top-[8%] left-[12%] text-[100%]">
+    <div class="suit absolute">
+      <component :is="svgComponent" :class="{ 'suit-red': isRedCard, 'suit-black': !isRedCard }" />
     </div>
     <div class="number text-white font-bold absolute -mt-1 size-[20%] text-[2cqw]">
       {{ number }}
@@ -12,26 +16,47 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Card } from '~~/types/types';
+import HeartSVG from '~/components/svg/HeartSVG.vue'
+import DiamondSVG from '~/components/svg/DiamondSVG.vue'
+import ClubSVG from '~/components/svg/ClubSVG.vue'
+import SpadeSVG from '~/components/svg/SpadeSVG.vue'
+import { decode } from 'blurhash'
 
 const props = defineProps<{ card?: Card }>()
 
 const isRedCard = computed(() => (props.card?.suit === '♥' || props.card?.suit === '♦'))
 
-const color = computed(() => {
-  if (!props.card) return 'text-slate-800'
-  return isRedCard.value ? 'text-red-600' : 'text-slate-800'
-})
-
-const image = computed(() => {
-  if (props.card?.suit) {
-    return `/${props.card.suit}.svg`
-  } else {
-    return `/${props.card.rank}.svg`
+const svgComponent = computed(() => {
+  if (!props.card?.suit) return null
+  switch (props.card.suit) {
+    case '♥': return HeartSVG
+    case '♦': return DiamondSVG
+    case '♣': return ClubSVG
+    case '♠': return SpadeSVG
+    default: return null
   }
 })
 
 const number = computed(() => {
   return props.card?.rank
+})
+
+
+const isDarkBackground = computed(() => {
+  const blurhash = props.card?.blurhash
+
+  if (!blurhash) return false
+
+  const pixels = decode(blurhash, 1, 1)
+
+  const r = pixels[0]
+  const g = pixels[1]
+  const b = pixels[2]
+
+  // Luminance perceptuelle
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+  return luminance < 100
 })
 </script>
 
@@ -40,11 +65,24 @@ const number = computed(() => {
   transition: opacity 0.5s ease-in-out;
   container-type: inline-size;
   z-index: 10;
+
+  svg {
+    height: 40px;
+    width: 40px;
+  }
 }
 
 .number {
-  font-size: 34cqw;
-  line-height: 34cqw;
   width: 100%;
+  font-size: 34cqw;
+  line-height: 40cqw;
+}
+
+.suit-dark {
+  color: black;
+}
+
+.suit-red {
+  @apply text-red-600;
 }
 </style>
