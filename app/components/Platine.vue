@@ -769,7 +769,7 @@ defineExpose({
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    @apply relative bg-black bg-opacity-60 backdrop-blur-sm rounded-full;
+    @apply relative bg-black bg-opacity-70 rounded-full;
   }
 }
 </style>
