@@ -7,6 +7,7 @@
     </label>
     <CardElement :card="props.card!" :buttons="props.buttons" :is-face-up="isFaceUp" :role="isOpen ? 'img' : 'button'"
       :is-loading="isLoading" :back-color="props.backColor" :is-disabled="isDisabled" :is-playing="props.isPlaying"
+      :show-play-button-on-face-down="props.showPlayButtonOnFaceDown"
       :class="{ 'current-card': props.isCurrent }" @click="clickOnCard" @button-click="onButtonClick" />
     <Platine v-if="isPlatineMounted" ref="platineRef" :card="card" :active="isOpen"
       :class="{ 'fading-out': isPlatineFading }" @loaded="onTrackLoaded" @finishPlaying="onFinishPlaying"
@@ -33,10 +34,12 @@ const props = withDefaults(defineProps<{
   navigateTarget?: string,
   autoplay?: boolean,
   showPlayButton?: boolean,
+  showPlayButtonOnFaceDown?: boolean,
   disabled?: boolean,
 }>(), {
   buttons: () => ['play'],
   selectable: false,
+  showPlayButtonOnFaceDown: true
 })
 
 const emit = defineEmits<{

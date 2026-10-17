@@ -1,6 +1,6 @@
 <template>
   <Card v-if="card" class="card-reveal" :class="{ 'is-visible': cardVisible }" :card="card" :is-face-up="isFaceUp"
-    :autoplay="autoplay" :show-play-button="showPlayButton" click-behavior="self-play" />
+    :autoplay="autoplay" :show-play-button="showPlayButton" :show-play-button-on-face-down="false" click-behavior="self-play" />
 </template>
 
 <script setup lang="ts">

@@ -50,7 +50,7 @@
       <footer
         class="face-down z-10 p-[6%] bg-opacity-10 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden select-none">
         <figure class="cover">
-          <PlayButton :is-loading="isLoading" :is-playing="props.isPlaying" />
+          <PlayButton v-if="showPlayButtonOnFaceDown" :is-loading="isLoading" :is-playing="props.isPlaying" />
           <img :src="faceDownImageSrc" class="cover-image" :style="{ backgroundColor: cardColor }" draggable="false" />
         </figure>
       </footer>
@@ -74,6 +74,8 @@ const props = withDefaults(defineProps<{
   buttons?: string[];
   role?: string;
   tabindex?: string | number;
+  /** Affiche ou non le bouton play sur la face cachée de la carte (défaut: true) */
+  showPlayButtonOnFaceDown?: boolean;
 }>(), {
   backColor: null,
   isFaceUp: false,
@@ -81,7 +83,8 @@ const props = withDefaults(defineProps<{
   isPlaying: false,
   buttons: () => ['play'],
   role: 'button',
-  tabindex: '0'
+  tabindex: '0',
+  showPlayButtonOnFaceDown: true
 })
 
 import { getYearColor } from '~/utils/colors'
