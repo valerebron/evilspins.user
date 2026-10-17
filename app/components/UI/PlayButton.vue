@@ -1,5 +1,5 @@
 <template>
-  <button :tabindex="props.interactive ? 0 : -1" class="play-button"
+  <button :tabindex="props.tabindex ?? (props.interactive ? 0 : -1)" class="play-button"
     :class="{ 'is-loading': isLoading, interactive: props.interactive }" :disabled="isLoading" type="button">
     <Loader v-if="props.isLoading" />
     <template v-else>
@@ -13,6 +13,8 @@ const props = withDefaults(defineProps<{
   isLoading?: boolean;
   isPlaying?: boolean;
   interactive?: boolean;
+  /** Surcharge le tabindex calculé (permet de garder le bouton cliquable sans l'inclure dans l'ordre de tabulation) */
+  tabindex?: number | null;
 }>(), {
   isLoading: false,
   isPlaying: false,

@@ -18,10 +18,10 @@
             'action-buttons--custom': !usePlayButton,
             'action-buttons--loading-play': usePlayButton && isLoading
           }">
-            <PlayButton v-if="usePlayButton" :is-loading="isLoading" :is-playing="props.isPlaying" interactive
+            <PlayButton v-if="usePlayButton" :is-loading="isLoading" :is-playing="props.isPlaying" interactive :tabindex="-1"
               aria-label="play" @click.stop="emitButtonClick(visibleButtons[0] ?? 'play')" />
             <template v-else>
-              <button v-for="buttonName in visibleButtons" :key="buttonName" type="button"
+              <button v-for="buttonName in visibleButtons" :key="buttonName" type="button" tabindex="-1"
                 class="btn btn-sm btn-neutral action-button capitalize" @click.stop="emitButtonClick(buttonName)">
                 {{ buttonName }}
               </button>

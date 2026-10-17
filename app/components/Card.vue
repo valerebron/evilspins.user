@@ -439,6 +439,10 @@ $card-transition-speed: 1.2s;
 $card-mount-speed: 0.2s;
 
 .card {
+  &:focus-within {
+    z-index: 50;
+  }
+
   &.card-enter {
     animation: scale-in $card-mount-speed cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
