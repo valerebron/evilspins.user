@@ -66,9 +66,18 @@ const isDarkBackground = computed(() => {
   container-type: inline-size;
   z-index: 10;
 
-  svg {
-    height: 40px;
-    width: 40px;
+  .suit {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :deep(svg) {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
 }
 

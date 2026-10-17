@@ -1,5 +1,5 @@
 <template>
-  <svg width="180mm" height="180mm" viewBox="0 0 180 180" version="1.1" id="svg1"
+  <svg width="100%" height="100%" viewBox="0 0 180 180" version="1.1" id="svg1"
     inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)" sodipodi:docname="clubs.svg"
     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg"
