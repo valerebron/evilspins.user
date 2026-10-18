@@ -47,7 +47,7 @@ useOutsideClick(() => {
 
 .card {
   transition: width height opacity 0.7s;
-  width: 30vmax;
+  width: 14vmax;
 
   @media (max-width: 768px) {
     width: 30vh;
