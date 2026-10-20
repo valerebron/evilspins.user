@@ -100,6 +100,14 @@ const { resolveMediaUrl } = useMediaUrl()
 
 let bobineFreezeTimer: ReturnType<typeof window.setTimeout> | null = null
 
+// Verrou actif pendant un effet de scratch (avance/recul au clavier).
+// Pendant l'effet, on laisse le son suivre la courbe de vitesse du scratch
+// (1 -> 3 -> 1) sans que la boucle du disque ne force le taux à 1 à chaque frame.
+let isScratchEffectActive = false
+// Permet de gérer les scratches qui se chevauchent (auto-repeat d'une flèche maintenue) :
+// seul le dernier né a le droit de lever le verrou.
+let scratchGeneration = 0
+
 const canAutoplayNow = async () => {
   if (!sampler.value) return false
   return await sampler.value.ensureAudioContextRunning()
@@ -141,8 +149,11 @@ const initPlatine = (element: HTMLElement) => {
     }
 
     disc.value.callbacks.onLoop = ({ playbackSpeed, isReversed, secondsPlayed }) => {
-      // Ne mettre à jour que si nécessaire et s'assurer que la position est valide
-      if (Math.abs((sampler.value?.currentSpeed || 0) - playbackSpeed) > 0.01) {
+      // Ne mettre à jour que si nécessaire et s'assurer que la position est valide.
+      // Pendant un scratch au clavier, on ne resynchronise PAS le sampler sur la vitesse
+      // du disque : sinon le taux de lecture serait réinitialisé à 1 à chaque frame et
+      // la courbe d'accélération/décélération du scratch serait hachée.
+      if (!isScratchEffectActive && Math.abs((sampler.value?.currentSpeed || 0) - playbackSpeed) > 0.01) {
         const safeSecondsPlayed = Math.max(0, secondsPlayed)
         sampler.value?.updateSpeed(playbackSpeed, isReversed, safeSecondsPlayed)
       }
@@ -355,7 +366,7 @@ const Power = async () => {
       return
     }
 
-    Rewind()
+    await Rewind()
     return
   }
   await togglePlay()
@@ -376,50 +387,61 @@ const Reverse = () => {
 const Rewind = async () => {
   if (!disc.value || !sampler.value) return
 
-  // Sauvegarder l'état actuel
+  // En fin de morceau, le disque est réellement arrêté (setAngle() appelle
+  // stop(), rafId = null) : on relance la lecture pour que le rembobinage soit
+  // audible. On attend la résolution pour évaluer l'état réel ensuite.
   if (disc.value.isStopped()) {
-    void play()
+    await play(0, false)
   }
-  const wasPlaying = !disc.value.isStopped()
+
+  // Voir NextFourSec : isPlaying lit sampler.currentSpeed, l'état audio réel.
+  // disc.isStopped() reste false pendant une pause (pas de stop() appelé).
+  const wasPlaying = isPlaying.value
   const currentSpeed = disc.value.playbackSpeed
 
-  // Fonction pour l'effet de scratch/pull up
-  const scratchEffect = async () => {
-    // Ralentir progressivement
-    const slowDownDuration = 300 // ms
-    const startTime = performance.now()
-    const startSpeed = wasPlaying ? currentSpeed : 0.1
-
-    const slowDown = (timestamp: number) => {
-      const elapsed = timestamp - startTime
-      const progress = Math.min(elapsed / slowDownDuration, 1)
-
-      // Courbe d'accélération pour un effet plus naturel
-      const easeOut = 1 - Math.pow(1 - progress, 2)
-
-      // Ralentir progressivement jusqu'à presque l'arrêt
-      const newSpeed = startSpeed * (1 - easeOut) + 0.05
-      sampler.value?.setPlaybackRate(newSpeed)
-
-      if (progress < 1) {
-        requestAnimationFrame(slowDown)
-      } else {
-        // Une fois ralenti, effectuer le rembobinage
-        performRewind()
-      }
-    }
-
-    requestAnimationFrame(slowDown)
-    void play(0, false)
+  if (!wasPlaying) {
+    // Platine en pause : on recale uniquement la position du disque, SANS
+    // toucher au sampler (sampler.play() démarre la lecture). Au prochain
+    // togglePlay(), play(disc.secondsPlayed) repositionnera le sampler sur 0.
+    disc.value.setAngle(0)
+    updateTurns()
+    return
   }
 
-  const performRewind = () => {
-    // Mettre en pause la lecture actuelle
-    if (wasPlaying) {
-      sampler.value?.pause()
-    }
+  // Pendant tout l'effet, la boucle du disque ne doit pas écraser la vitesse du
+  // scratch (même verrou que NextFourSec/PrevFourSec).
+  isScratchEffectActive = true
+  const generation = ++scratchGeneration
 
-    // Remettre à zéro la position
+  // Phase 1 : ralentir progressivement À LA POSITION COURANTE.
+  // On ne touche pas à la position ici : c'est la phase 2 qui saute au début.
+  const slowDownDuration = 300 // ms
+  const startTime = performance.now()
+  // Math.abs : en lecture inversée la vitesse est négative, mais setPlaybackRate
+  // travaille déjà en valeur absolue. On garde donc une décélération positive.
+  const startSpeed = Math.abs(currentSpeed) || 1
+
+  const slowDown = (timestamp: number) => {
+    const elapsed = timestamp - startTime
+    const progress = Math.min(elapsed / slowDownDuration, 1)
+
+    // Courbe d'accélération pour un effet plus naturel
+    const easeOut = 1 - Math.pow(1 - progress, 2)
+
+    // Ralentir progressivement jusqu'à presque l'arrêt
+    const newSpeed = startSpeed * (1 - easeOut) + 0.05
+    sampler.value?.setPlaybackRate(newSpeed)
+
+    if (progress < 1) {
+      requestAnimationFrame(slowDown)
+    } else {
+      // Une fois ralenti, effectuer le rembobinage
+      performRewind()
+    }
+  }
+
+  // Phase 2 : on recale disque et son sur le début, puis effet de scratch.
+  const performRewind = () => {
     sampler.value?.play(0, false)
     disc.value?.setAngle(0)
 
@@ -447,14 +469,14 @@ const Rewind = async () => {
       if (progress < 1) {
         requestAnimationFrame(scratch)
       } else {
-        // Remettre la vitesse normale à la fin
+        // Vitesse normale à la fin. Pas de "pause puis relance" (l'ancien
+        // setTimeout coupait le son 50 ms) : le sampler est déjà en lecture
+        // depuis le début du morceau, on laisse donc la lecture se poursuivre
+        // sans coupure, et le disque avance déjà depuis setAngle(0).
         sampler.value?.setPlaybackRate(1)
 
-        // Si c'était en lecture avant, relancer la lecture
-        if (wasPlaying) {
-          setTimeout(() => {
-            sampler.value?.play(0, false)
-          }, 50)
+        if (generation === scratchGeneration) {
+          isScratchEffectActive = false
         }
       }
     }
@@ -462,8 +484,8 @@ const Rewind = async () => {
     requestAnimationFrame(scratch)
   }
 
-  // Démarrer l'effet
-  scratchEffect()
+  // Démarrer l'effet (phase 1)
+  requestAnimationFrame(slowDown)
 }
 
 
@@ -472,7 +494,15 @@ const NextFourSec = () => {
 
   const currentPosition = disc.value.secondsPlayed || 0
   const newPosition = Math.min(currentPosition + 4, (disc.value as any)._duration)
-  const wasPlaying = !disc.value.isStopped()
+  // On se fie à l'état audio réel (isPlaying lit sampler.currentSpeed).
+  // disc.isStopped() ne détecte PAS la pause : powerOffWithDeceleration() ne
+  // lance jamais disc.stop(), donc la boucle rAF reste active et isStopped()
+  // reste false une fois en pause.
+  const wasPlaying = isPlaying.value
+
+  // Pendant l'effet, la boucle du disque ne doit pas écraser la vitesse du scratch.
+  isScratchEffectActive = true
+  const generation = ++scratchGeneration
 
   const scratchEffect = () => {
     const scratchDuration = 300
@@ -502,8 +532,18 @@ const NextFourSec = () => {
       if (progress < 1) {
         requestAnimationFrame(scratch)
       } else {
-        sampler.value?.play(newPosition, wasPlaying)
+        // On recalcule la position audio SANS rampe d'accélération (1,5 s partant de
+        // 0.001), sinon le son s'arrêterait puis remonterait lentement au lieu de
+        // décélérer proprement jusqu'à la vitesse d'écoute normale.
+        // Si la platine était à l'arrêt, on ne relance pas le son : l'état pause est conservé.
+        if (wasPlaying) {
+          sampler.value?.play(newPosition, false)
+        }
         disc.value?.setAngle(targetAngle)
+        // Seul le dernier scratch en date a le droit de lever le verrou.
+        if (generation === scratchGeneration) {
+          isScratchEffectActive = false
+        }
       }
     }
 
@@ -518,7 +558,12 @@ const PrevFourSec = () => {
 
   const currentPosition = disc.value.secondsPlayed || 0
   const newPosition = Math.max(currentPosition - 4, 0)
-  const wasPlaying = !disc.value.isStopped()
+  // Voir NextFourSec : on se fie à l'état audio réel, pas à disc.isStopped().
+  const wasPlaying = isPlaying.value
+
+  // Pendant l'effet, la boucle du disque ne doit pas écraser la vitesse du scratch.
+  isScratchEffectActive = true
+  const generation = ++scratchGeneration
 
   const scratchEffect = () => {
     const scratchDuration = 300
@@ -548,8 +593,17 @@ const PrevFourSec = () => {
       if (progress < 1) {
         requestAnimationFrame(scratch)
       } else {
-        sampler.value?.play(newPosition, wasPlaying)
+        // Recalage du playhead SANS rampe d'accélération (voir NextFourSec).
+        // Le son ralentit jusqu'à ~0 puis repart vers 1 : on garde l'état de lecture
+        // initial, on ne relance pas le son si la platine était à l'arrêt.
+        if (wasPlaying) {
+          sampler.value?.play(newPosition, false)
+        }
         disc.value?.setAngle(targetAngle)
+        // Seul le dernier scratch en date a le droit de lever le verrou.
+        if (generation === scratchGeneration) {
+          isScratchEffectActive = false
+        }
       }
     }
 

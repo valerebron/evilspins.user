@@ -74,7 +74,10 @@ class Disc {
   private _inertiaVelocity: number = 0
   private _isInertiaActive: boolean = false
   private _basePlaybackSpeed: number = 1 // Vitesse de lecture normale
-  private _inertiaFriction: number = 1 // Coefficient de frottement pour l'inertie (plus proche de 1 = plus long)
+  // Coefficient de frottement pour l'inertie (plus proche de 1 = plus long).
+  // Doit être strictement < 1 : sinon _inertiaVelocity *= _inertiaFriction ne
+  // s'amortit jamais et le disque glisserait indéfiniment.
+  private _inertiaFriction: number = 0.9
   private _lastDragVelocity: number = 0 // Dernière vitesse de drag
   private _lastDragTime: number = 0 // Dernier temps de drag
   private _inertiaAmplification: number = 12 // Facteur d'amplification de l'inertie (baissé pour éviter les flings trop violents)
@@ -297,6 +300,13 @@ class Disc {
     this._lastDragTime = performance.now()
     this._lastDragVelocity = 0
 
+    // La boucle rAF peut être à l'arrêt (platine jamais démarrée, ou stoppée en
+    // fin de morceau). Sans elle, aucun onLoop ne se déclencherait pendant le
+    // glisser : le son ne suivrait pas le scratch et la progression resterait figée.
+    if (this.rafId === null) {
+      this.start()
+    }
+
     e.preventDefault()
 
     this.callbacks.onDragStart()
@@ -351,6 +361,13 @@ class Disc {
     this._isInertiaActive = true
     const direction = this.isReversed ? -1 : 1
     this._inertiaVelocity = this._lastDragVelocity * this._inertiaAmplification * direction
+
+    // La boucle rAF peut être à l'arrêt (fin de morceau, platine jamais démarrée).
+    // Sans elle, l'inertie serait activée mais jamais animée : le disque ne
+    // glisserait pas et isStopped() resterait faux indéfiniment.
+    if (this.rafId === null) {
+      this.start()
+    }
 
     if (this._accelerationRafId === null && this._decelerationRafId === null) {
       this._basePlaybackSpeed = this._isPoweredOn ? (this.isReversed ? -1 : 1) : 0
@@ -409,6 +426,11 @@ class Disc {
           this._isInertiaActive = false
           this._inertiaVelocity = 0
           this._playbackSpeed = 0
+
+          // Le disque s'arrête : on coupe aussi le son. Sinon le sampler relancé
+          // par onDragEnded resterait à la vitesse de lecture alors que la
+          // platine est éteinte.
+          this.callbacks.onStop()
         }
       }
     } else {
@@ -517,8 +539,11 @@ class Disc {
     const currentTimestamp = performance.now()
     const timestampDifferenceMS = currentTimestamp - this.previousTimestamp
 
-    // Ne mettre à jour la rotation que si le lecteur est allumé et pas en train de glisser
-    if (this._isPoweredOn && !this.isDragging) {
+    // Faire tourner le disque si le lecteur est allumé, OU si une inertie est en
+    // cours (glisser/scratch relâché). autoRotate() est le seul endroit où
+    // l'inertie est appliquée et amortie : sans cette seconde condition, le disque
+    // ne continuerait jamais à glisser quand la platine est en pause.
+    if ((this._isPoweredOn || this._isInertiaActive) && !this.isDragging) {
       this.autoRotate(currentTimestamp)
     }
 
