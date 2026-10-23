@@ -823,7 +823,13 @@ defineExpose({
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    transition: transform 0.1s;
     @apply relative bg-black bg-opacity-70 rounded-full;
+  }
+
+  .disc:has(.power-button:active) .bobine,
+  .disc:has(.power-button.isPowerActive) .bobine {
+    transform: translate(-50%, -50%) scale(0.8);
   }
 }
 </style>
