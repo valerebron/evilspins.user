@@ -786,6 +786,11 @@ defineExpose({
     left: 50%;
     transform: translate(-50%, -50%);
 
+    &:focus-visible {
+      outline: none;
+      box-shadow: none;
+    }
+
     .macaron {
       position: absolute;
       filter: grayscale(1);
