@@ -1,0 +1,21 @@
+{
+  "id": 1,
+  "esid": "a2437ebc84f18abedd31d0c4550e5c40",
+  "year": 2022,
+  "month": 3,
+  "day": 12,
+  "hour": 9,
+  "artist": "Frozen",
+  "title": "Madonna",
+  "slug": "frozen-madonna",
+  "stem": "2022031209__Frozen__Madonna",
+  "suit": "♥",
+  "rank": "9",
+  "blurhash": null,
+  "file_mtime": "1794378991510",
+  "file_size": "38347428",
+  "created_at": "2022-03-12T08:00:00.000Z",
+  "updated_at": "2026-11-11T12:14:36.473Z",
+  "url_audio": "files/2022031209__Frozen__Madonna.flac"
+}
+
